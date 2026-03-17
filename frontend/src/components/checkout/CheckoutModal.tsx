@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, User, Phone, Home, CreditCard, Banknote, UploadCloud, CheckCircle2, ChevronRight } from 'lucide-react';
+import { X, MapPin, CheckCircle2, QrCode, CreditCard, Banknote, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import qrCode from '../../assets/payment-qr.jpg';
 
@@ -11,6 +11,8 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: CheckoutModalProps) {
+    const [step, setStep] = useState<1 | 2 | 3>(1);
+    
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState({
@@ -35,8 +37,10 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleNext = () => setStep(step < 3 ? (step + 1) as 1 | 2 | 3 : 3);
+    const handleBack = () => setStep(step > 1 ? (step - 1) as 1 | 2 | 3 : 1);
+
+    const handleSubmit = () => {
         onSubmit({ name, phone, address, location, paymentMethod, paymentProof });
     };
 
@@ -54,17 +58,9 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                 (error) => {
                     console.error("Error getting location", error);
                     setLoadingLocation(false);
-                    let errorMessage = "Could not get location.";
-                    if (error.code === 1) errorMessage = "Location permission denied.";
-                    else if (error.code === 2) errorMessage = "Location unavailable.";
-                    else if (error.code === 3) errorMessage = "Location request timed out.";
-                    alert(`${errorMessage} Please enter address manually.`);
+                    alert("Could not get location. Please enter address manually.");
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         } else {
             setLoadingLocation(false);
@@ -74,339 +70,325 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
 
     if (!isOpen) return null;
 
+    const isStep1Valid = name.trim() !== '' && phone.length >= 10;
+    const isStep2Valid = address.street.trim() !== '' && address.city.trim() !== '' && address.pincode.length >= 6;
+    const isStep3Valid = paymentMethod === 'COD' || (paymentMethod === 'Online' && paymentProof !== '');
+
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 sm:items-end md:items-center">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="absolute inset-0 bg-stone-900/70 backdrop-blur-md"
+                    className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                 />
+                
                 <motion.div
-                    initial={{ scale: 0.95, opacity: 0, y: 30 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.95, opacity: 0, y: 30 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: "100%", opacity: 0 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                    className="relative w-full max-w-lg bg-white sm:rounded-3xl rounded-t-3xl sm:rounded-b-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]"
                 >
-                    {/* Left Column - Order Summary & Payment Info (Visible on larger screens or stacked) */}
-                    <div className="hidden md:flex flex-col w-[35%] bg-stone-50 border-r border-stone-200 p-8">
-                        <div className="flex-1">
-                            <h3 className="text-xl font-display font-bold text-stone-900 mb-6">Order Summary</h3>
-                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 flex flex-col gap-2">
-                                <span className="text-sm font-medium text-stone-500">Total to Pay</span>
-                                <span className="text-4xl font-bold text-primary">₹{totalAmount.toFixed(0)}</span>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                <ShoppingBag size={20} />
                             </div>
-                            
-                            <div className="space-y-4 mt-8">
-                                <div className="flex items-center gap-3 text-sm text-stone-600">
-                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                        <CheckCircle2 size={16} />
-                                    </div>
-                                    <p>Fast delivery within your area</p>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-stone-600">
-                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                        <CheckCircle2 size={16} />
-                                    </div>
-                                    <p>Fresh, high-quality cuts</p>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-stone-600">
-                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                        <CheckCircle2 size={16} />
-                                    </div>
-                                    <p>Safe and hygienic packaging</p>
-                                </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Checkout</h2>
+                                <p className="text-xs text-gray-500 font-medium">Step {step} of 3</p>
                             </div>
                         </div>
-
-                        <div className="mt-8 pt-8 border-t border-stone-200">
-                            <p className="text-xs text-stone-500 leading-relaxed">
-                                By placing this order, you agree to our terms and conditions. Orders will be verified via WhatsApp.
-                            </p>
-                        </div>
+                        <button 
+                            onClick={onClose} 
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X size={20} />
+                        </button>
                     </div>
 
-                    {/* Right Column - Form */}
-                    <div className="flex-1 flex flex-col h-full bg-white relative overflow-hidden">
-                        {/* Header */}
-                        <div className="flex justify-between items-center p-6 sm:p-8 border-b border-stone-100 z-10 bg-white/80 backdrop-blur-md sticky top-0">
-                            <div>
-                                <h2 className="text-2xl font-display font-bold text-stone-900">Checkout</h2>
-                                <p className="text-sm text-stone-500 mt-1">Complete your delivery details</p>
-                            </div>
-                            <button 
-                                onClick={onClose} 
-                                className="w-10 h-10 rounded-full bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-500 hover:text-stone-900 transition-colors"
+                    {/* Progress Bar */}
+                    <div className="h-1 bg-gray-100 w-full relative overflow-hidden">
+                        <motion.div 
+                            className="absolute top-0 left-0 h-full bg-primary"
+                            initial={{ width: `${((step - 1) / 3) * 100}%` }}
+                            animate={{ width: `${(step / 3) * 100}%` }}
+                            transition={{ ease: "easeInOut", duration: 0.3 }}
+                        />
+                    </div>
+
+                    {/* Form Content */}
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={step}
+                                initial={{ x: 20, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                exit={{ x: -20, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
                             >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Scrolling Form Container */}
-                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
-                            <form id="checkout-form" onSubmit={handleSubmit} className="space-y-8">
-                                
-                                {/* 1. Contact Info */}
-                                <section>
-                                    <h3 className="text-sm font-semibold text-stone-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">1</span>
-                                        Contact Information
-                                    </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
-                                                <User size={18} />
-                                            </div>
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="Full Name"
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                            />
+                                {/* STEP 1: Personal Details */}
+                                {step === 1 && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1">Contact Details</h3>
+                                            <p className="text-sm text-gray-500">We'll use this to notify you about your order.</p>
                                         </div>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
-                                                <Phone size={18} />
-                                            </div>
-                                            <input
-                                                required
-                                                type="tel"
-                                                placeholder="Phone Number"
-                                                value={phone}
-                                                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                            />
-                                        </div>
-                                    </div>
-                                </section>
 
-                                {/* 2. Delivery Address */}
-                                <section>
-                                    <div className="flex justify-between items-end mb-4">
-                                        <h3 className="text-sm font-semibold text-stone-900 uppercase tracking-wider flex items-center gap-2">
-                                            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">2</span>
-                                            Delivery Address
-                                        </h3>
-                                        <button
-                                            type="button"
-                                            onClick={getCurrentLocation}
-                                            disabled={loadingLocation}
-                                            className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium transition-colors"
-                                        >
-                                            <MapPin size={14} className={loadingLocation ? "animate-bounce" : ""} />
-                                            {loadingLocation ? 'Locating...' : 'Auto-Locate'}
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {location && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, height: 0 }} 
-                                                animate={{ opacity: 1, height: 'auto' }} 
-                                                className="bg-green-50 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2 border border-green-100"
-                                            >
-                                                <CheckCircle2 size={16} /> Location captured successfully!
-                                            </motion.div>
-                                        )}
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="relative md:col-span-2">
-                                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
-                                                    <Home size={18} />
-                                                </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Name</label>
                                                 <input
-                                                    required
-                                                    placeholder="House No., Building Name, Street"
+                                                    type="text"
+                                                    value={name}
+                                                    onChange={(e) => setName(e.target.value)}
+                                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                    placeholder="John Doe"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">+91</span>
+                                                    <input
+                                                        type="tel"
+                                                        value={phone}
+                                                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                        placeholder="98765 43210"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* STEP 2: Delivery Address */}
+                                {step === 2 && (
+                                    <div className="space-y-6">
+                                         <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900 mb-1">Delivery Address</h3>
+                                                <p className="text-sm text-gray-500">Where should we send your fresh cuts?</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={getCurrentLocation}
+                                                disabled={loadingLocation}
+                                                className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                                title="Use Current Location"
+                                            >
+                                                <MapPin size={18} className={loadingLocation ? "animate-pulse" : ""} />
+                                            </button>
+                                        </div>
+
+                                        {location && (
+                                            <div className="bg-green-50 border border-green-100 p-3 rounded-xl flex items-center gap-3 text-green-700 text-sm">
+                                                <CheckCircle2 size={18} className="shrink-0" />
+                                                <span className="font-medium">GPS Location attached successfully</span>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Street / Building info</label>
+                                                <input
+                                                    type="text"
                                                     value={address.street}
                                                     onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                                                    className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                    placeholder="House No, Apartment Name"
                                                 />
                                             </div>
-
-                                            <div className="relative">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">City</label>
+                                                    <input
+                                                        type="text"
+                                                        value={address.city}
+                                                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                        placeholder="Your City"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Pincode</label>
+                                                    <input
+                                                        type="text"
+                                                        value={address.pincode}
+                                                        onChange={(e) => setAddress({ ...address, pincode: e.target.value.slice(0, 6) })}
+                                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                        placeholder="000000"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Landmark (Optional)</label>
                                                 <input
-                                                    required
-                                                    placeholder="City"
-                                                    value={address.city}
-                                                    onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                                />
-                                            </div>
-                                            <div className="relative">
-                                                <input
-                                                    required
-                                                    placeholder="Pincode"
-                                                    value={address.pincode}
-                                                    onChange={(e) => setAddress({ ...address, pincode: e.target.value.slice(0, 6) })}
-                                                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                                />
-                                            </div>
-                                            <div className="relative md:col-span-2">
-                                                 <input
-                                                    placeholder="Landmark (Optional)"
+                                                    type="text"
                                                     value={address.landmark}
                                                     onChange={(e) => setAddress({ ...address, landmark: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                    placeholder="E.g. Near Apollo Hospital"
                                                 />
                                             </div>
                                         </div>
                                     </div>
-                                </section>
+                                )}
 
-                                {/* 3. Payment Method */}
-                                <section>
-                                     <h3 className="text-sm font-semibold text-stone-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">3</span>
-                                        Payment Method
-                                    </h3>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <label 
-                                            className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                                paymentMethod === 'COD' 
-                                                ? 'border-primary bg-primary/5' 
-                                                : 'border-stone-200 hover:border-stone-300 bg-white'
-                                            }`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="paymentMethod"
-                                                value="COD"
-                                                checked={paymentMethod === 'COD'}
-                                                onChange={() => setPaymentMethod('COD')}
-                                                className="sr-only"
-                                            />
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${paymentMethod === 'COD' ? 'bg-primary/20 text-primary' : 'bg-stone-100 text-stone-500'}`}>
-                                                    <Banknote size={20} />
-                                                </div>
-                                                <div>
-                                                    <div className="font-semibold text-stone-900">Cash on Delivery</div>
-                                                    <div className="text-xs text-stone-500">Pay at your doorstep</div>
-                                                </div>
-                                            </div>
-                                            {paymentMethod === 'COD' && (
-                                                <div className="absolute top-4 right-4 text-primary">
-                                                    <CheckCircle2 size={20} />
-                                                </div>
-                                            )}
-                                        </label>
+                                {/* STEP 3: Payment */}
+                                {step === 3 && (
+                                    <div className="space-y-6">
+                                         <div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1">Payment Method</h3>
+                                            <p className="text-sm text-gray-500">Choose how you want to pay</p>
+                                        </div>
 
-                                        <label 
-                                            className={`relative flex flex-col justify-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                                paymentMethod === 'Online' 
-                                                ? 'border-primary bg-primary/5' 
-                                                : 'border-stone-200 hover:border-stone-300 bg-white'
-                                            }`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="paymentMethod"
-                                                value="Online"
-                                                checked={paymentMethod === 'Online'}
-                                                onChange={() => setPaymentMethod('Online')}
-                                                className="sr-only"
-                                            />
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${paymentMethod === 'Online' ? 'bg-primary/20 text-primary' : 'bg-stone-100 text-stone-500'}`}>
-                                                    <CreditCard size={20} />
-                                                </div>
-                                                <div>
-                                                    <div className="font-semibold text-stone-900">Pay Online</div>
-                                                    <div className="text-xs text-stone-500">Scan QR & Upload Proof</div>
-                                                </div>
-                                            </div>
-                                            {paymentMethod === 'Online' && (
-                                                <div className="absolute top-4 right-4 text-primary">
-                                                    <CheckCircle2 size={20} />
-                                                </div>
-                                            )}
-                                        </label>
-                                    </div>
-
-                                    {/* Online Payment Details */}
-                                    <AnimatePresence>
-                                        {paymentMethod === 'Online' && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="overflow-hidden mt-4"
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <label 
+                                                className={`relative flex flex-col p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+                                                    paymentMethod === 'COD' 
+                                                    ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10' 
+                                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                }`}
                                             >
-                                                <div className="bg-stone-50 rounded-2xl border border-stone-200 p-6 flex flex-col md:flex-row gap-6 items-center">
-                                                    <div className="bg-white p-3 rounded-xl shadow-sm border border-stone-100 shrink-0">
-                                                        <img src={qrCode} alt="Payment QR" className="w-32 h-32 object-contain" />
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMethod"
+                                                    value="COD"
+                                                    checked={paymentMethod === 'COD'}
+                                                    onChange={() => setPaymentMethod('COD')}
+                                                    className="sr-only"
+                                                />
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <div className={`p-2 rounded-full ${paymentMethod === 'COD' ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+                                                        <Banknote size={18} />
                                                     </div>
-                                                    <div className="flex-1 w-full text-center md:text-left">
-                                                        <h4 className="font-bold text-stone-900 text-lg mb-1">+91 96052 06865</h4>
-                                                        <p className="text-sm text-stone-500 mb-4">Pay via GPay, PhonePe, or Paytm</p>
-                                                        
-                                                        <label className="relative flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-stone-300 rounded-xl bg-white hover:bg-stone-50 transition-colors cursor-pointer group">
-                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                {paymentProof ? (
-                                                                    <div className="flex items-center gap-2 text-green-600">
-                                                                        <CheckCircle2 size={24} />
-                                                                        <span className="font-medium text-sm">Screenshot Uploaded</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <UploadCloud className="w-6 h-6 text-stone-400 group-hover:text-primary mb-2 transition-colors" />
-                                                                        <p className="text-xs text-stone-500 font-medium">Click to upload screenshot *</p>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                            <input
-                                                                required
-                                                                type="file"
-                                                                accept="image/*"
-                                                                onChange={handleFileChange}
-                                                                className="hidden"
-                                                            />
-                                                        </label>
-                                                    </div>
+                                                    <span className="font-bold text-gray-900">Cash on Delivery</span>
                                                 </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </section>
-                            </form>
-                        </div>
+                                                <span className="text-xs text-gray-500 ml-11">Pay via cash or UPI at your doorstep</span>
+                                            </label>
 
-                        {/* Footer / Submit Button */}
-                        <div className="p-6 border-t border-stone-100 bg-white z-10 md:hidden pb-safe">
-                             <div className="flex justify-between items-center mb-4">
-                                <span className="text-sm font-medium text-stone-500">Total to Pay</span>
-                                <span className="text-2xl font-bold text-primary">₹{totalAmount.toFixed(0)}</span>
-                            </div>
-                            <button
-                                form="checkout-form"
-                                type="submit"
-                                disabled={!name || !phone || !address.street || !address.city || !address.pincode || (paymentMethod === 'Online' && !paymentProof)}
-                                className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary/90 disabled:bg-stone-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-                            >
-                                Place Order <ChevronRight size={20} />
-                            </button>
+                                            <label 
+                                                className={`relative flex flex-col p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+                                                    paymentMethod === 'Online' 
+                                                    ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10' 
+                                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMethod"
+                                                    value="Online"
+                                                    checked={paymentMethod === 'Online'}
+                                                    onChange={() => setPaymentMethod('Online')}
+                                                    className="sr-only"
+                                                />
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <div className={`p-2 rounded-full ${paymentMethod === 'Online' ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+                                                        <CreditCard size={18} />
+                                                    </div>
+                                                    <span className="font-bold text-gray-900">Pay Online</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500 ml-11">Scan QR code now and upload proof</span>
+                                            </label>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {paymentMethod === 'Online' && (
+                                                <motion.div 
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 mt-4">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm mb-3">
+                                                                <img src={qrCode} alt="GPay QR" className="w-32 h-32 object-contain rounded-lg" />
+                                                            </div>
+                                                            <p className="font-bold text-gray-900 text-lg mb-0.5">+91 96052 06865</p>
+                                                            <p className="text-xs text-gray-500 mb-5">Google Pay / PhonePe / Paytm</p>
+                                                            
+                                                            <div className="w-full relative">
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    id="payment-proof"
+                                                                    onChange={handleFileChange}
+                                                                    className="hidden"
+                                                                />
+                                                                <label 
+                                                                    htmlFor="payment-proof"
+                                                                    className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer ${
+                                                                        paymentProof 
+                                                                        ? 'border-green-400 bg-green-50 text-green-700' 
+                                                                        : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-600'
+                                                                    }`}
+                                                                >
+                                                                    {paymentProof ? (
+                                                                        <>
+                                                                            <CheckCircle2 size={18} />
+                                                                            <span className="font-semibold text-sm">Screenshot Attached!</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <QrCode size={18} />
+                                                                            <span className="font-medium text-sm">Upload Payment Screenshot</span>
+                                                                        </>
+                                                                    )}
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Footer Container */}
+                    <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex flex-col gap-4">
+                        <div className="flex justify-between items-center px-1">
+                            <span className="text-sm font-semibold text-gray-500">Total Estimate</span>
+                            <span className="text-2xl font-bold text-primary">₹{totalAmount.toFixed(0)}</span>
                         </div>
                         
-                        {/* Footer for Desktop */}
-                        <div className="hidden md:block p-6 sm:p-8 border-t border-stone-100 bg-white z-10 w-full relative">
-                           <div className="flex justify-end w-full">
+                        <div className="flex gap-3">
+                            {step > 1 && (
                                 <button
-                                    form="checkout-form"
-                                    type="submit"
-                                    disabled={!name || !phone || !address.street || !address.city || !address.pincode || (paymentMethod === 'Online' && !paymentProof)}
-                                    className="min-w-[240px] py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary/90 disabled:bg-stone-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                                    onClick={handleBack}
+                                    className="px-5 py-3.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
                                 >
-                                    Confirm Order <ChevronRight size={20} />
+                                    Back
                                 </button>
-                           </div>
+                            )}
+                            
+                            {step < 3 ? (
+                                <button
+                                    onClick={handleNext}
+                                    disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
+                                    className="flex-1 py-3.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 disabled:bg-gray-300 disabled:text-gray-500 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    Continue
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!isStep3Valid}
+                                    className="flex-1 py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center gap-2"
+                                >
+                                    Complete Order
+                                </button>
+                            )}
                         </div>
-
                     </div>
                 </motion.div>
             </div>
