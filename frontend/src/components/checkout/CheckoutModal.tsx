@@ -48,19 +48,46 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
         setLoadingLocation(true);
         if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
-                (position) => {
+                async (position) => {
+                    const { latitude, longitude, accuracy } = position.coords;
+                    
                     setLocation({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
+                        lat: latitude,
+                        lng: longitude
                     });
+
+                    // Reverse Geocode to auto-fill the address
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                        const data = await res.json();
+                        if (data && data.address) {
+                            setAddress(prev => ({
+                                ...prev,
+                                city: data.address.city || data.address.town || data.address.village || data.address.county || prev.city,
+                                pincode: data.address.postcode || prev.pincode,
+                                street: data.address.road ? `${data.address.road}, ${data.address.suburb || ''}`.replace(/, $/, '') : prev.street
+                            }));
+                        }
+                    } catch (error) {
+                        console.error("Reverse geocoding failed", error);
+                    }
+                    
+                    if (accuracy > 1000) {
+                        alert("Note: Device GPS accuracy is currently low. Please verify your auto-detected address.");
+                    }
+
                     setLoadingLocation(false);
                 },
                 (error) => {
                     console.error("Error getting location", error);
                     setLoadingLocation(false);
-                    alert("Could not get location. Please enter address manually.");
+                    let errorMessage = "Could not get location.";
+                    if (error.code === 1) errorMessage = "Please enable Location permission in your device/browser settings.";
+                    else if (error.code === 2) errorMessage = "Network or GPS issue. Location unavailable.";
+                    else if (error.code === 3) errorMessage = "Location request timed out. Try moving to a better spot.";
+                    alert(`${errorMessage} Please enter address manually.`);
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
             );
         } else {
             setLoadingLocation(false);
@@ -170,19 +197,29 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                 {/* STEP 2: Delivery Address */}
                                 {step === 2 && (
                                     <div className="space-y-6">
-                                         <div className="flex justify-between items-start">
+                                         <div className="flex flex-col gap-4 mb-2">
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-900 mb-1">Delivery Address</h3>
                                                 <p className="text-sm text-gray-500">Where should we send your fresh cuts?</p>
                                             </div>
+                                            
                                             <button
                                                 type="button"
                                                 onClick={getCurrentLocation}
                                                 disabled={loadingLocation}
-                                                className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                                                title="Use Current Location"
+                                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold transition-colors border border-blue-200 shadow-sm"
                                             >
-                                                <MapPin size={18} className={loadingLocation ? "animate-pulse" : ""} />
+                                                {loadingLocation ? (
+                                                    <>
+                                                        <MapPin size={18} className="animate-bounce" />
+                                                        Detecting pinpoint location...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <MapPin size={18} />
+                                                        Use Exact GPS Location
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
 
