@@ -95,7 +95,7 @@ router.post('/create-order', async (req, res) => {
         const options = {
             amount: SUBSCRIPTION_AMOUNT * 100, // Amount in paise
             currency: "INR",
-            receipt: `sub_receipt_${cycleId}_${Date.now()}`
+            receipt: `sub_${Date.now()}` // Max 40 characters allowed by Razorpay
         };
 
         const order = await razorpay.orders.create(options);
