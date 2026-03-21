@@ -53,7 +53,18 @@ export function AdminDashboard() {
         const isAdmin = localStorage.getItem('isAdmin');
         if (!isAdmin) {
             navigate('/admin');
+            return;
         }
+
+        // Verify active subscription
+        fetch(`${import.meta.env.VITE_API_URL}/api/subscription/status`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.isPaid) {
+                    navigate('/admin/pay');
+                }
+            })
+            .catch(err => console.error("Failed to verify subscription:", err));
     }, [navigate]);
 
     useEffect(() => {

@@ -28,12 +28,14 @@ io.on('connection', (socket) => {
 
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
+import subscriptionRoutes from './routes/subscriptionRoutes';
 
 app.use(cors());
 app.use(express.json());
 
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/thahoor')

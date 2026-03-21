@@ -7,6 +7,7 @@ import { Cart } from './pages/Cart';
 import { Recipes } from './pages/Recipes';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminPay } from './pages/admin/AdminPay';
 import { Profile } from './pages/Profile';
 import { Contact } from './pages/Contact';
 
@@ -16,6 +17,7 @@ function App() {
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/pay" element={<AdminPay />} />
 
       {/* Public Routes */}
       <Route path="/" element={<Layout><Home /></Layout>} />

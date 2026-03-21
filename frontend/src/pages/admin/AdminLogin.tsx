@@ -7,16 +7,32 @@ export function AdminLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Hardcoded credentials as requested
         if (email === 'admin' && password === 'thahoor@123') {
-            // Simple auth persistence (for session)
-            localStorage.setItem('isAdmin', 'true');
-            navigate('/admin/dashboard');
+            setLoading(true);
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/subscription/status`);
+                const data = await res.json();
+                
+                localStorage.setItem('isAdmin', 'true');
+                
+                if (data.isPaid) {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/admin/pay');
+                }
+            } catch (err) {
+                console.error("Failed to fetch subscription status:", err);
+                setError("Unable to verify subscription status. Please check your connection.");
+            } finally {
+                setLoading(false);
+            }
         } else {
             setError('Invalid credentials');
         }
@@ -66,9 +82,10 @@ export function AdminLogin() {
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-lg shadow-primary/30"
+                        disabled={loading}
+                        className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-lg shadow-primary/30 disabled:opacity-75 flex items-center justify-center"
                     >
-                        Login
+                        {loading ? 'Verifying...' : 'Login'}
                     </button>
                 </form>
             </motion.div>
