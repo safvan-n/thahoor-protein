@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "seed": "npm run seed --prefix backend",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +16,7 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
+    "firebase": "^12.11.0",
     "socket.io-client": "^4.8.3"
   }
 }

@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { useUserStore } from './store/userStore';
 import { Layout } from './components/layout/Layout';
 // We will create these pages next
 import { Home } from './pages/Home';
@@ -7,17 +9,27 @@ import { Cart } from './pages/Cart';
 import { Recipes } from './pages/Recipes';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { AdminPay } from './pages/admin/AdminPay';
 import { Profile } from './pages/Profile';
 import { Contact } from './pages/Contact';
+import { DeliveryDashboard } from './pages/DeliveryDashboard';
+import { DeliveryLogin } from './pages/DeliveryLogin';
 
 function App() {
+  const initializeAuth = useUserStore(state => state.initializeAuth);
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   return (
     <Routes>
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/pay" element={<AdminPay />} />
+
+      {/* Delivery Routes */}
+      <Route path="/delivery" element={<DeliveryDashboard />} />
+      <Route path="/delivery/login" element={<DeliveryLogin />} />
 
       {/* Public Routes */}
       <Route path="/" element={<Layout><Home /></Layout>} />

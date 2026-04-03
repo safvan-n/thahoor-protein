@@ -28,22 +28,16 @@ io.on('connection', (socket) => {
 
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
-import subscriptionRoutes from './routes/subscriptionRoutes';
+import categoryRoutes from './routes/categoryRoutes';
 
 app.use(cors());
 app.use(express.json());
 
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/categories', categoryRoutes);
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/thahoor')
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch(err => {
-        console.log('⚠️  MongoDB not found. Running in Offline Mode (File-based storage active).');
-        // console.error('❌ MongoDB Connection Error:', err); // Suppress annoying error
-    });
+// Note: Database is now handled by Firestore Admin SDK
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Thahoor Protein API is active' });

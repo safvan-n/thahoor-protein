@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
-import { CATEGORIES } from '../data/mockData';
 import { useProductStore } from '../store/productStore';
+import { useCategoryStore } from '../store/categoryStore';
 import { CutCard } from '../components/product/CutCard';
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -15,10 +15,15 @@ export function Shop() {
     const products = useProductStore((state) => state.products);
     const fetchProducts = useProductStore((state) => state.fetchProducts);
 
-    // ✅ IMPORTANT: Fetch products when page loads
+    // ✅ Get categories + fetch function
+    const categories = useCategoryStore((state) => state.categories);
+    const fetchCategories = useCategoryStore((state) => state.fetchCategories);
+
+    // ✅ IMPORTANT: Fetch data when page loads
     useEffect(() => {
         fetchProducts();
-    }, [fetchProducts]);
+        fetchCategories();
+    }, [fetchProducts, fetchCategories]);
 
     // ✅ Filtering logic
     const filteredCuts = useMemo(() => {
@@ -61,7 +66,19 @@ export function Shop() {
             {/* Filter Tabs */}
             <div className="flex justify-center mb-12">
                 <div className="flex gap-2 p-1 bg-muted/50 rounded-full border border-border overflow-x-auto max-w-full">
-                    {CATEGORIES.map((cat) => (
+                    <button
+                        onClick={() =>
+                            setSearchParams({})
+                        }
+                        className={`px-6 py-2 rounded-full whitespace-nowrap text-sm font-bold transition-all duration-300 ${
+                            !selectedCatId
+                                ? 'bg-white text-primary shadow-md'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        All
+                    </button>
+                    {categories.map((cat: any) => (
                         <button
                             key={cat.id}
                             onClick={() =>

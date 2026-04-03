@@ -12,6 +12,7 @@ export interface Cut {
     description: string;
     pricePerKg: number;
     image: string;
+    isAvailable?: boolean;
 }
 
 export interface CartItem extends Cut {

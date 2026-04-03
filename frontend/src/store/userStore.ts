@@ -1,13 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { db, auth, storage } from '../lib/firebase';
+import { 
+    collection, 
+    query, 
+    where, 
+    onSnapshot,
+    orderBy,
+    limit,
+    addDoc
+} from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 export interface User {
     name: string;
     email: string;
+    uid?: string;
 }
 
 export interface Order {
-    _id: string;
+    id: string;
     orderId: string;
     createdAt: string;
     customer: {
@@ -25,19 +38,21 @@ export interface Order {
     totalAmount: number;
     items: { name: string; qty: number; price: number }[];
     deliveryBoy?: { name: string; phone: string };
+    paymentMethod: 'COD' | 'Online';
+    paymentProof?: string;
 }
 
 interface UserState {
     user: User | null;
     isAuthenticated: boolean;
     orders: Order[];
-    fetchOrders: (email: string) => Promise<void>;
+    loadingOrders: boolean;
+    fetchOrders: (email: string) => void;
     login: (user: User) => void;
     logout: () => void;
-    addOrder: (order: any) => Promise<void>;
+    addOrder: (order: any) => Promise<any>;
+    initializeAuth: () => void;
 }
-
-import { io } from 'socket.io-client';
 
 export const useUserStore = create<UserState>()(
     persist(
@@ -45,67 +60,99 @@ export const useUserStore = create<UserState>()(
             user: null,
             isAuthenticated: false,
             orders: [],
-            fetchOrders: async (email: string) => {
-                try {
-                    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/user/${email}`);
-                    if (!res.ok) throw new Error('Failed to fetch');
-                    const data = await res.json();
-                    if (Array.isArray(data)) {
-                        set({ orders: data });
+            loadingOrders: false,
+
+            initializeAuth: () => {
+                onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+                    if (firebaseUser) {
+                        set({ 
+                            user: { 
+                                name: firebaseUser.displayName || 'User', 
+                                email: firebaseUser.email || '',
+                                uid: firebaseUser.uid
+                            }, 
+                            isAuthenticated: true 
+                        });
+                        get().fetchOrders(firebaseUser.email || '');
+                    } else {
+                        set({ user: null, isAuthenticated: false, orders: [] });
                     }
-
-                    // Initialize Socket.io connection if not already active
-                    // We can also do this in a separate init function or useEffect in the component
-                    // But doing it here ensures it connects when we fetch orders (user is active)
-                    const socket = io(import.meta.env.VITE_API_URL);
-
-                    socket.on('connect', () => {
-                        console.log('Connected to socket server');
-                    });
-
-                    socket.on('orderUpdated', (updatedOrder: Order) => {
-                        const currentUser = get().user;
-                        if (currentUser && updatedOrder.customer?.email === currentUser.email) {
-                            set((state) => ({
-                                orders: state.orders.map((order) =>
-                                    order._id === updatedOrder._id || order.orderId === updatedOrder.orderId ? updatedOrder : order
-                                )
-                            }));
-                        }
-                    });
-
-                } catch (error) {
-                    console.error('Failed to fetch orders:', error);
-                }
+                });
             },
+
+            fetchOrders: (email: string) => {
+                if (!email) return;
+                
+                set({ loadingOrders: true });
+                const ordersCol = collection(db, 'orders');
+                const q = query(
+                    ordersCol, 
+                    where('customer.email', '==', email),
+                    orderBy('createdAt', 'desc'),
+                    limit(20)
+                );
+
+                // Real-time listener for user orders
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const orderList = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })) as Order[];
+                    set({ orders: orderList, loadingOrders: false });
+                }, (error) => {
+                    console.error('Firestore orders subscription error:', error);
+                    set({ loadingOrders: false });
+                });
+
+                return unsubscribe;
+            },
+
             login: (user) => {
                 set({ user, isAuthenticated: true });
-                // trigger fetch
-                // This will be called manually for now or we can expose fetchOrders
+                get().fetchOrders(user.email);
             },
-            logout: () => {
+
+            logout: async () => {
+                await auth.signOut();
                 set({ user: null, isAuthenticated: false, orders: [] });
-                // Note: We might want to disconnect socket here if we stored it in state,
-                // but for now, simple implementation logic is fine.
             },
-            addOrder: async (order) => {
+
+            addOrder: async (orderData) => {
                 try {
-                    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(order)
+                    let finalProofUrl = orderData.paymentProof;
+
+                    // If proof is a base64 string, upload to Storage
+                    if (orderData.paymentMethod === 'Online' && orderData.paymentProof?.startsWith('data:image')) {
+                        const storageRef = ref(storage, `payment-proofs/${Date.now()}-${orderData.orderId}.jpg`);
+                        await uploadString(storageRef, orderData.paymentProof, 'data_url');
+                        finalProofUrl = await getDownloadURL(storageRef);
+                    }
+
+                    const ordersCol = collection(db, 'orders');
+                    const timestamp = new Date().toISOString();
+                    
+                    const docRef = await addDoc(ordersCol, {
+                        ...orderData,
+                        paymentProof: finalProofUrl || '',
+                        createdAt: timestamp,
+                        updatedAt: timestamp
                     });
-                    const savedOrder = await res.json();
-                    set((state) => ({ orders: [savedOrder, ...state.orders] }));
-                    return savedOrder;
+
+                    return { 
+                        id: docRef.id, 
+                        ...orderData, 
+                        paymentProof: finalProofUrl,
+                        createdAt: timestamp 
+                    };
                 } catch (error) {
-                    console.error('Failed to add order:', error);
+                    console.error('Failed to add order to Firestore:', error);
                     throw error;
                 }
             },
         }),
         {
             name: 'user-storage',
+            partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
         }
     )
 );

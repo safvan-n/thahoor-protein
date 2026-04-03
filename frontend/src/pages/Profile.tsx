@@ -91,10 +91,10 @@ export function Profile() {
                     ) : (
                         <div className="space-y-6">
                             {orders.map((order) => (
-                                <div key={order._id || Math.random()} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative group">
+                                <div key={order.id || Math.random()} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative group">
                                     {/* Delete Button */}
                                     <button
-                                        onClick={() => handleDeleteOrder(order._id)}
+                                        onClick={() => handleDeleteOrder(order.id)}
                                         className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-20"
                                         title="Delete from History"
                                     >
@@ -105,7 +105,7 @@ export function Profile() {
                                         <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                             <div>
                                                 <div className="flex items-center gap-3 mb-1">
-                                                    <span className="font-bold text-lg text-gray-800">Order #{order.orderId || order._id?.slice(-6) || 'NM-' + Math.random().toString(36).substr(2, 4)}</span>
+                                                    <span className="font-bold text-lg text-gray-800">Order #{order.orderId || order.id?.slice(-6) || 'NM-' + Math.random().toString(36).substr(2, 4)}</span>
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide 
                                                         ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
                                                             order.status === 'On the Way' ? 'bg-blue-100 text-blue-700' :

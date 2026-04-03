@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow everything for now so you can debug and seed your database
+    // Suggest refining this to 'if request.auth != null' for production
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

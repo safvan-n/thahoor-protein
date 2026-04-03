@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { X, MapPin, CheckCircle2, QrCode, CreditCard, Banknote, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import qrCode from '../../assets/payment-qr.jpg';
@@ -26,7 +26,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
     const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Online'>('COD');
     const [paymentProof, setPaymentProof] = useState<string>('');
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
@@ -56,24 +56,13 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                         lng: longitude
                     });
 
-                    // Reverse Geocode to auto-fill the address
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                        const data = await res.json();
-                        if (data && data.address) {
-                            setAddress(prev => ({
-                                ...prev,
-                                city: data.address.city || data.address.town || data.address.village || data.address.county || prev.city,
-                                pincode: data.address.postcode || prev.pincode,
-                                street: data.address.road ? `${data.address.road}, ${data.address.suburb || ''}`.replace(/, $/, '') : prev.street
-                            }));
-                        }
-                    } catch (error) {
-                        console.error("Reverse geocoding failed", error);
-                    }
+                    // We are NOT auto-filling the address anymore at user request
+                    // This ensures the user types their exact address manually while we still get the GPS pin
                     
                     if (accuracy > 1000) {
-                        alert("Note: Device GPS accuracy is currently low. Please verify your auto-detected address.");
+                        alert("Note: Low GPS accuracy. Please ensure you are outdoors for a better signal.");
+                    } else {
+                        alert("✅ GPS Location Captured successfully!");
                     }
 
                     setLoadingLocation(false);
@@ -175,6 +164,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     onChange={(e) => setName(e.target.value)}
                                                     className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
                                                     placeholder="John Doe"
+                                                    autoComplete="off"
                                                 />
                                             </div>
                                             <div>
@@ -187,6 +177,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                                         className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
                                                         placeholder="98765 43210"
+                                                        autoComplete="off"
                                                     />
                                                 </div>
                                             </div>
@@ -239,6 +230,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     onChange={(e) => setAddress({ ...address, street: e.target.value })}
                                                     className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
                                                     placeholder="House No, Apartment Name"
+                                                    autoComplete="off"
                                                 />
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
@@ -250,6 +242,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                         onChange={(e) => setAddress({ ...address, city: e.target.value })}
                                                         className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
                                                         placeholder="Your City"
+                                                        autoComplete="off"
                                                     />
                                                 </div>
                                                 <div>
@@ -260,6 +253,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                         onChange={(e) => setAddress({ ...address, pincode: e.target.value.slice(0, 6) })}
                                                         className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
                                                         placeholder="000000"
+                                                        autoComplete="off"
                                                     />
                                                 </div>
                                             </div>
@@ -271,6 +265,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     onChange={(e) => setAddress({ ...address, landmark: e.target.value })}
                                                     className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
                                                     placeholder="E.g. Near Apollo Hospital"
+                                                    autoComplete="off"
                                                 />
                                             </div>
                                         </div>

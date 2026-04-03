@@ -16,6 +16,8 @@ export function CutCard({ cut }: CutCardProps) {
     const [clickPos, setClickPos] = useState({ x: 0, y: 0 });
 
     const handleAdd = (e: React.MouseEvent) => {
+        if (cut.isAvailable === false) return;
+
         // Record click position for the arrow
         setClickPos({ x: e.clientX, y: e.clientY });
 
@@ -38,10 +40,19 @@ export function CutCard({ cut }: CutCardProps) {
                     <img
                         src={cut.image}
                         alt={cut.name}
-                        className="w-full h-48 object-cover rounded shadow-sm group-hover:scale-105 transition-transform duration-500"
+                        className={`w-full h-48 object-cover rounded shadow-sm group-hover:scale-105 transition-transform duration-500 ${cut.isAvailable === false ? 'grayscale' : ''}`}
                     />
+                    
+                    {cut.isAvailable === false && (
+                        <div className="absolute top-2 left-2 z-10">
+                            <span className="bg-red-600 text-white text-[10px] uppercase font-black px-2 py-1 rounded shadow-lg tracking-tighter">
+                                Out of Stock
+                            </span>
+                        </div>
+                    )}
+
                     {/* Hover Overlay Button */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${cut.isAvailable === false ? 'hidden' : ''}`}>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleAdd(e); }}
                             className="bg-primary text-white p-3 rounded-full hover:bg-red-800 transition-colors"

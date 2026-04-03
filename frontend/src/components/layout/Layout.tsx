@@ -29,7 +29,9 @@ export function Layout({ children }: LayoutProps) {
                     </div>
                     <div>
                         <h4 className="font-bold mb-4">Contact</h4>
-                        <p className="text-sm text-muted-foreground">support@thahoor.com</p>
+                        <p className="text-sm text-muted-foreground underline decoration-primary/30 underline-offset-4 hover:text-primary transition-colors cursor-pointer">
+                            <a href="mailto:thahoorprotein@gmail.com">thahoorprotein@gmail.com</a>
+                        </p>
                         <p className="text-sm text-muted-foreground mt-2">
                             8075575472<br />
                             04792446480

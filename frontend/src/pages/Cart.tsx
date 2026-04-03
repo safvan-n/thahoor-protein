@@ -59,10 +59,8 @@ export function Cart() {
 
             // Payment Info with Proof Link
             let paymentText = `%0A*Payment Method:* ${details.paymentMethod}`;
-            if (details.paymentMethod === 'Online' && savedOrder?._id) {
-                // Use localhost for now, ideally this should be the deployed domain
-                const proofLink = `${import.meta.env.VITE_API_URL}/api/orders/${savedOrder._id}/proof`;
-                paymentText += `%0A*Payment Proof:* ${proofLink}`;
+            if (details.paymentMethod === 'Online' && savedOrder?.paymentProof) {
+                paymentText += `%0A*Payment Proof:* ${savedOrder.paymentProof}`;
             }
 
             const userText = `%0A%0A*Customer:* ${user?.name || details.name}`;

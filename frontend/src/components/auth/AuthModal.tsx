@@ -1,31 +1,135 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { X, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    updateProfile,
+    sendPasswordResetEmail,
+    signInWithPopup,
+    GoogleAuthProvider
+} from 'firebase/auth';
+import { auth, db } from '../../lib/firebase';
 import { useUserStore } from '../../store/userStore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
+type AuthMode = 'login' | 'signup' | 'forgot-password';
+
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-    const [isLogin, setIsLogin] = useState(true);
+    const [mode, setMode] = useState<AuthMode>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [name, setName] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
 
     const login = useUserStore(state => state.login);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const resetStates = () => {
+        setError('');
+        setSuccessMsg('');
+        setLoading(false);
+    };
+
+    const handleModeSwitch = (newMode: AuthMode) => {
+        setMode(newMode);
+        resetStates();
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Simulate auth
-        if (email && password) {
+        resetStates();
+
+        if (mode === 'signup' && password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        if (password.length < 6 && mode !== 'forgot-password') {
+            setError('Password should be at least 6 characters');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            if (mode === 'signup') {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: name });
+                
+                // Register as customer
+                await setDoc(doc(db, 'customers', email.toLowerCase()), {
+                    name,
+                    email: email.toLowerCase(),
+                    role: 'customer',
+                    createdAt: serverTimestamp()
+                }, { merge: true });
+
+                login({
+                    name: name,
+                    email: email,
+                    uid: userCredential.user.uid
+                });
+                onClose();
+            } else if (mode === 'login') {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                login({
+                    name: userCredential.user.displayName || email.split('@')[0],
+                    email: email,
+                    uid: userCredential.user.uid
+                });
+                onClose();
+            } else if (mode === 'forgot-password') {
+                await sendPasswordResetEmail(auth, email);
+                setSuccessMsg('Password reset link sent to your email!');
+            }
+        } catch (err: any) {
+            console.error('Auth Error:', err);
+            let message = 'An error occurred. Please try again.';
+            if (err.code === 'auth/user-not-found') message = 'No account found with this email.';
+            else if (err.code === 'auth/wrong-password') message = 'Incorrect password.';
+            else if (err.code === 'auth/email-already-in-use') message = 'Email already in use.';
+            else if (err.code === 'auth/invalid-email') message = 'Invalid email address.';
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const provider = new GoogleAuthProvider();
+            const userCredential = await signInWithPopup(auth, provider);
+            
+            // Register as customer
+            await setDoc(doc(db, 'customers', userCredential.user.email?.toLowerCase() || userCredential.user.uid), {
+                name: userCredential.user.displayName,
+                email: userCredential.user.email,
+                role: 'customer',
+                lastLogin: serverTimestamp()
+            }, { merge: true });
+
             login({
-                name: name || email.split('@')[0],
-                email
+                name: userCredential.user.displayName || 'User',
+                email: userCredential.user.email || '',
+                uid: userCredential.user.uid
             });
             onClose();
+        } catch (err: any) {
+            console.error('Google login failed:', err);
+            setError('Google sign-in was interrupted. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -75,21 +179,48 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
                         <div className="text-center mb-8">
                             <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                                {isLogin ? 'Welcome Back!' : 'Create Account'}
+                                {mode === 'login' && 'Welcome Back!'}
+                                {mode === 'signup' && 'Create Account'}
+                                {mode === 'forgot-password' && 'Reset Password'}
                             </h2>
                             <p className="text-gray-500">
-                                {isLogin ? "Don't have an account? " : "Already have an account? "}
-                                <button
-                                    onClick={() => setIsLogin(!isLogin)}
-                                    className="text-primary font-bold hover:underline"
-                                >
-                                    {isLogin ? 'Sign Up' : 'Log In'}
-                                </button>
+                                {mode === 'login' && (
+                                    <>
+                                        Don't have an account?{' '}
+                                        <button onClick={() => handleModeSwitch('signup')} className="text-primary font-bold hover:underline">Sign Up</button>
+                                    </>
+                                )}
+                                {mode === 'signup' && (
+                                    <>
+                                        Already have an account?{' '}
+                                        <button onClick={() => handleModeSwitch('login')} className="text-primary font-bold hover:underline">Log In</button>
+                                    </>
+                                )}
+                                {mode === 'forgot-password' && (
+                                    <>
+                                        Remember your password?{' '}
+                                        <button onClick={() => handleModeSwitch('login')} className="text-primary font-bold hover:underline">Log In</button>
+                                    </>
+                                )}
                             </p>
                         </div>
 
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl flex items-center gap-2 text-sm">
+                                <AlertCircle size={18} />
+                                {error}
+                            </div>
+                        )}
+
+                        {successMsg && (
+                            <div className="mb-4 p-3 bg-green-50 text-green-600 rounded-xl flex items-center gap-2 text-sm">
+                                <CheckCircle2 size={18} />
+                                {successMsg}
+                            </div>
+                        )}
+
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {!isLogin && (
+                            {mode === 'signup' && (
                                 <div>
                                     <input
                                         type="text"
@@ -113,33 +244,87 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                 />
                             </div>
 
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="Password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-3 bg-red-50 rounded-xl border-none focus:ring-2 focus:ring-primary/20 outline-none text-gray-800 placeholder-gray-400"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                            </div>
+                            {mode !== 'forgot-password' && (
+                                <>
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="Password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full px-4 py-3 bg-red-50 rounded-xl border-none focus:ring-2 focus:ring-primary/20 outline-none text-gray-800 placeholder-gray-400"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+
+                                    {mode === 'signup' && (
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                placeholder="Confirm Password"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                className="w-full px-4 py-3 bg-red-50 rounded-xl border-none focus:ring-2 focus:ring-primary/20 outline-none text-gray-800 placeholder-gray-400"
+                                                required
+                                            />
+                                        </div>
+                                    )}
+
+                                    {mode === 'login' && (
+                                        <div className="text-right">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleModeSwitch('forgot-password')}
+                                                className="text-sm text-gray-500 hover:text-primary transition-colors"
+                                            >
+                                                Forgot Password?
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
 
                             <button
                                 type="submit"
-                                className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-red-800 transition-colors shadow-lg shadow-primary/30 mt-4"
+                                disabled={loading}
+                                className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-red-800 transition-all shadow-lg shadow-primary/30 mt-4 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                {isLogin ? 'Sign In' : 'Create Account'}
+                                {loading ? (
+                                    <Loader2 className="animate-spin" size={20} />
+                                ) : (
+                                    <>
+                                        {mode === 'login' && 'Sign In'}
+                                        {mode === 'signup' && 'Create Account'}
+                                        {mode === 'forgot-password' && 'Send Reset Link'}
+                                    </>
+                                )}
                             </button>
                         </form>
 
+                        <div className="mt-6 flex flex-col items-center">
+                            <div className="relative w-full mb-6 flex items-center justify-center">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-100"></div>
+                                </div>
+                                <span className="relative bg-white px-4 text-xs text-gray-400 font-bold uppercase tracking-widest">Or login with</span>
+                            </div>
 
+                            <button
+                                onClick={handleGoogleLogin}
+                                disabled={loading}
+                                className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all font-bold text-gray-700 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                                Google
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             </div>
