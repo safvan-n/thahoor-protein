@@ -1,4 +1,4 @@
-import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Scale } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Scale, Minus, Plus } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../store/userStore';
@@ -132,9 +132,9 @@ export function Cart() {
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -50 }}
-                                    className="group relative flex flex-col sm:flex-row gap-6 md:gap-8 pb-10 border-b border-gray-100 last:border-0"
+                                    className="group relative flex flex-row items-center gap-4 md:gap-8 pb-10 border-b border-gray-100 last:border-0"
                                 >
-                                    <div className="relative w-24 h-24 md:w-32 md:h-32 overflow-hidden shadow-xl shrink-0">
+                                    <div className="relative w-20 h-20 md:w-32 md:h-32 overflow-hidden shadow-xl shrink-0">
                                         <div className="absolute inset-0 z-10 border border-white/20 pointer-events-none"></div>
                                         <img src={item.image} alt={item.name} className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-700" />
                                     </div>
@@ -154,17 +154,30 @@ export function Cart() {
                                         </div>
 
                                         <div className="flex flex-wrap items-center justify-between gap-6">
-                                            <div className="flex items-center bg-white border border-gray-100 shadow-sm px-4 py-2">
-                                                <label className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mr-4">Weight:</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.5"
-                                                    min="0.5"
-                                                    value={item.qtyKg}
-                                                    onChange={(e) => updateQty(item.id, parseFloat(e.target.value) || 0.5)}
-                                                    className="w-12 text-sm font-bold text-gray-900 outline-none bg-transparent"
-                                                />
-                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest ml-2">kg</span>
+                                            <div className="flex items-center gap-3 bg-white border border-gray-100 shadow-sm p-1 rounded-lg">
+                                                <button 
+                                                    onClick={() => updateQty(item.id, Math.max(0.5, item.qtyKg - 0.5))}
+                                                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-400 hover:text-primary transition-colors rounded-md active:scale-90"
+                                                >
+                                                    <Minus size={14} />
+                                                </button>
+                                                
+                                                <div className="flex items-center gap-1 min-w-[60px] justify-center">
+                                                    <input
+                                                        type="number"
+                                                        value={item.qtyKg}
+                                                        onChange={(e) => updateQty(item.id, parseFloat(e.target.value) || 0.5)}
+                                                        className="w-10 text-sm font-black text-gray-900 outline-none bg-transparent text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                    <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">kg</span>
+                                                </div>
+
+                                                <button 
+                                                    onClick={() => updateQty(item.id, item.qtyKg + 0.5)}
+                                                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-400 hover:text-primary transition-colors rounded-md active:scale-90"
+                                                >
+                                                    <Plus size={14} />
+                                                </button>
                                             </div>
 
                                             <div className="text-right">

@@ -55,8 +55,8 @@ export function Navbar() {
                     <nav className="flex items-center justify-between">
                         
                         {/* Official Circular Branding Logo - Responsive Size */}
-                        <Link to="/" className="relative flex items-center justify-center -mt-4 sm:-mt-6 mr-4 sm:mr-6 group shrink-0">
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-1 shadow-2xl border-[3px] border-primary overflow-hidden transition-all duration-700 group-hover:scale-105 group-hover:rotate-6">
+                        <Link to="/" className="relative flex items-center justify-center -mt-3 sm:-mt-6 mr-3 sm:mr-6 group shrink-0">
+                            <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-white p-1 shadow-2xl border-[2px] sm:border-[3px] border-primary overflow-hidden transition-all duration-700 group-hover:scale-105 group-hover:rotate-6">
                                 <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
                                     <img 
                                         src="/assets/logo_round.jpg" 
