@@ -35,8 +35,8 @@ export function Home() {
     return (
         <div className="bg-white min-h-screen selection:bg-primary/20 selection:text-primary overflow-x-hidden">
 
-            {/* Premium Hero Section */}
-            <section ref={targetRef} className="relative h-[95vh] flex items-center bg-[#111111] overflow-hidden">
+            {/* Premium Hero Section - Responsive Height */}
+            <section ref={targetRef} className="relative min-h-[85vh] md:h-[95vh] flex items-center bg-[#111111] overflow-hidden pt-20 md:pt-0">
                 
                 {/* Background Image Carousel with Parallax */}
                 <AnimatePresence mode="wait">
@@ -52,10 +52,10 @@ export function Home() {
                 </AnimatePresence>
 
                 {/* Subtle Overlay Gradients */}
-                <div className="absolute inset-0 z-1 bg-gradient-to-r from-black via-black/40 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 right-0 h-32 z-1 bg-gradient-to-t from-black to-transparent"></div>
+                <div className="absolute inset-0 z-1 bg-gradient-to-r from-black/80 via-black/40 to-transparent md:from-black"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-48 z-1 bg-gradient-to-t from-black to-transparent"></div>
 
-                <div className="container mx-auto px-6 relative z-10">
+                <div className="container relative z-10">
                     <div className="max-w-3xl">
                         <motion.div
                             initial={{ opacity: 0, y: 30 }}
