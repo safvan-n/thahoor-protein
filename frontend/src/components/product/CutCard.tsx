@@ -62,44 +62,33 @@ export function CutCard({ cut }: CutCardProps) {
                     </div>
                 )}
 
-                {/* Hover Add to Cart Button - Specialized Tech Style */}
-                <AnimatePresence>
-                    {isHovered && cut.isAvailable !== false && (
-                        <motion.button
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 30 }}
-                            onClick={handleAdd}
-                            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 px-8 py-3 bg-gray-900 text-white text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary transition-all duration-300 shadow-xl"
-                        >
-                            <span className="flex items-center gap-3">
-                                <Plus size={14} className="text-primary" />
-                                Add To Selection
-                            </span>
-                        </motion.button>
-                    )}
-                </AnimatePresence>
+                {/* Hover/Touch Add to Cart Button */}
+                <button
+                    onClick={handleAdd}
+                    className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-30 px-4 md:px-8 py-2 md:py-3 bg-gray-900 text-white text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] hover:bg-primary transition-all duration-300 shadow-xl flex items-center gap-2 md:gap-3 ${isHovered || cut.isAvailable === false ? 'opacity-100 flex' : 'opacity-0 md:hidden'}`}
+                >
+                    <Plus size={12} className="text-primary" />
+                    <span className="whitespace-nowrap">{cut.isAvailable === false ? 'Stored' : 'Add'}</span>
+                </button>
                 
                 {/* Image Overlay Gradient */}
                 <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-gray-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             </div>
 
-            {/* Product Metadata */}
-            <div className="flex-grow flex flex-col items-center text-center px-4">
-                <div className="text-gray-400 text-[8px] font-bold uppercase tracking-[0.6em] mb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            {/* Product Metadata (Compact For Mobile) */}
+            <div className="flex-grow flex flex-col items-center text-center px-1 md:px-4">
+                <div className="text-gray-400 text-[6px] md:text-[8px] font-bold uppercase tracking-[0.4em] md:tracking-[0.6em] mb-2 md:mb-3">
                     Precision Grade
                 </div>
                 
-                <h3 className="font-serif font-black text-gray-900 text-2xl group-hover:text-primary transition-colors duration-500 mb-2 tracking-tighter line-clamp-1">
+                <h3 className="font-serif font-black text-gray-900 text-sm md:text-2xl group-hover:text-primary transition-colors duration-500 mb-1 md:mb-2 tracking-tighter line-clamp-1 h-[1.2em]">
                     {cut.name}
                 </h3>
-                
-                <div className="h-[1px] w-8 bg-gray-100 group-hover:w-16 group-hover:bg-primary/20 transition-all duration-700 mb-4"></div>
-                
+                        
                 <div className="mt-auto pb-4">
-                    <p className="text-gray-900 font-sans font-bold flex items-center justify-center gap-2">
-                        <span className="text-primary tracking-tighter text-lg">₹{cut.pricePerKg}</span>
-                        <span className="text-gray-300 text-[10px] font-medium uppercase tracking-widest">/ Per Kilogram</span>
+                    <p className="text-gray-900 font-sans font-bold flex flex-col items-center gap-0">
+                        <span className="text-primary tracking-tighter text-base md:text-lg leading-none">₹{cut.pricePerKg}</span>
+                        <span className="text-gray-300 text-[6px] md:text-[8px] font-medium uppercase tracking-[0.1em] md:tracking-widest mt-1">/ Per Kilogram</span>
                     </p>
                 </div>
             </div>

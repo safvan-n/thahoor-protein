@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Navbar } from './Navbar';
+import { BottomNav } from './BottomNav';
 import { MapPin, Mail, Phone, ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -11,9 +12,10 @@ export function Layout({ children }: LayoutProps) {
     return (
         <div className="min-h-screen bg-white flex flex-col font-sans selection:bg-primary selection:text-white">
             <Navbar />
-            <main className="flex-grow pt-0">
+            <main className="flex-grow pt-0 pb-24 md:pb-0">
                 {children}
             </main>
+            <BottomNav />
             
             {/* Premium Heritage Footer */}
             <footer className="relative bg-gray-900 pt-32 pb-16 overflow-hidden">

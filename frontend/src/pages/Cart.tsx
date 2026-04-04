@@ -103,7 +103,7 @@ export function Cart() {
     }
 
     return (
-        <div className="min-h-screen bg-[#fcfcfa] pt-40 pb-32">
+        <div className="min-h-screen bg-[#fcfcfa] pt-24 md:pt-40 pb-32">
             <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
             <CheckoutModal
                 isOpen={showCheckout}
@@ -113,17 +113,17 @@ export function Cart() {
             />
 
             <div className="container mx-auto px-6 max-w-6xl">
-                {/* Header */}
-                <header className="mb-16 border-b border-gray-200 pb-12">
+                {/* Header - Resized For Mobile */}
+                <header className="mb-12 border-b border-gray-200 pb-8 md:pb-12">
                     <div className="text-primary text-[10px] font-bold uppercase tracking-[0.5em] mb-4">Finalizing Selection</div>
-                    <h1 className="text-5xl md:text-7xl font-serif font-black text-gray-900 tracking-tighter">
+                    <h1 className="text-3xl md:text-7xl font-serif font-black text-gray-900 tracking-tighter">
                         The Selection <span className="text-primary italic">Cart.</span>
                     </h1>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-16">
                     {/* Items Column */}
-                    <div className="lg:col-span-7 space-y-10">
+                    <div className="lg:col-span-7 space-y-8 md:space-y-10">
                         <AnimatePresence mode="popLayout">
                             {items.map((item) => (
                                 <motion.div 
@@ -132,9 +132,9 @@ export function Cart() {
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -50 }}
-                                    className="group relative flex flex-col sm:flex-row gap-8 pb-10 border-b border-gray-100 last:border-0"
+                                    className="group relative flex flex-col sm:flex-row gap-6 md:gap-8 pb-10 border-b border-gray-100 last:border-0"
                                 >
-                                    <div className="relative w-32 h-32 overflow-hidden shadow-xl">
+                                    <div className="relative w-24 h-24 md:w-32 md:h-32 overflow-hidden shadow-xl shrink-0">
                                         <div className="absolute inset-0 z-10 border border-white/20 pointer-events-none"></div>
                                         <img src={item.image} alt={item.name} className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-700" />
                                     </div>

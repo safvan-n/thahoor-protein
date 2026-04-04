@@ -102,8 +102,8 @@ export function Shop() {
                 </div>
             </header>
 
-            {/* Filter Navigation Bar */}
-            <div className="sticky top-[100px] z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100 py-4 shadow-sm">
+            {/* Filter Navigation Bar (Resized For Mobile) */}
+            <div className="sticky top-[60px] sm:top-[80px] z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100 py-3 shadow-sm">
                 <div className="container mx-auto px-6 max-w-7xl">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                         {/* Category Links */}
@@ -151,9 +151,9 @@ export function Shop() {
             <div className="container mx-auto px-6 py-16 max-w-7xl">
                 
                 {/* Active Category Display */}
-                <div className="mb-12 flex items-center justify-between">
-                    <h2 className="text-2xl font-serif font-black text-gray-900 tracking-tight">
-                        {activeCategoryName} <span className="text-gray-300 ml-4 text-sm font-sans font-medium tracking-widest">/ {filteredCuts.length} Items</span>
+                <div className="mb-8 flex items-center justify-between">
+                    <h2 className="text-xl md:text-2xl font-serif font-black text-gray-900 tracking-tight">
+                        {activeCategoryName} <span className="text-gray-300 ml-2 text-[10px] font-sans font-medium tracking-widest hidden sm:inline">/ {filteredCuts.length} Items</span>
                     </h2>
                     <div className="h-[1px] flex-1 bg-gray-100 mx-10 hidden md:block"></div>
                     <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">
@@ -164,7 +164,7 @@ export function Shop() {
                 {/* Product Grid */}
                 <AnimatePresence mode="popLayout">
                     {isLoading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-12">
                             {[...Array(8)].map((_, i) => (
                                 <div key={i} className="flex flex-col gap-6">
                                     <Skeleton className="aspect-[4/5] rounded-none w-full" />
@@ -191,7 +191,7 @@ export function Shop() {
                     ) : (
                         <motion.div
                             layout
-                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12"
+                            className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-12"
                         >
                             {filteredCuts.map((cut, index) => (
                                 <motion.div
