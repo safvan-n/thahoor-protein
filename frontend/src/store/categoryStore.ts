@@ -13,6 +13,7 @@ import {
 
 interface CategoryState {
     categories: Category[];
+    isLoading: boolean;
     fetchCategories: () => Promise<void>;
     addCategory: (category: Category) => Promise<void>;
     updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
@@ -23,8 +24,10 @@ export const useCategoryStore = create<CategoryState>()(
     persist(
         (set) => ({
             categories: [],
+            isLoading: false,
 
             fetchCategories: async () => {
+                set({ isLoading: true });
                 try {
                     const categoriesCol = collection(db, 'categories');
                     const categorySnapshot = await getDocs(categoriesCol);
@@ -33,9 +36,10 @@ export const useCategoryStore = create<CategoryState>()(
                         id: doc.id
                     })) as Category[];
                     
-                    set({ categories: categoryList });
+                    set({ categories: categoryList, isLoading: false });
                 } catch (error) {
                     console.error('Failed to fetch categories from Firestore:', error);
+                    set({ isLoading: false });
                 }
             },
 
