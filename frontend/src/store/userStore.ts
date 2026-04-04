@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { db, auth, storage } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { 
     collection, 
     query, 
@@ -10,7 +10,7 @@ import {
     limit,
     addDoc
 } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 export interface User {
@@ -38,7 +38,7 @@ export interface Order {
     totalAmount: number;
     items: { name: string; qty: number; price: number }[];
     deliveryBoy?: { name: string; phone: string };
-    paymentMethod: 'COD' | 'Online';
+    paymentMethod: 'COD';
     paymentProof?: string;
 }
 
@@ -119,21 +119,11 @@ export const useUserStore = create<UserState>()(
 
             addOrder: async (orderData) => {
                 try {
-                    let finalProofUrl = orderData.paymentProof;
-
-                    // If proof is a base64 string, upload to Storage
-                    if (orderData.paymentMethod === 'Online' && orderData.paymentProof?.startsWith('data:image')) {
-                        const storageRef = ref(storage, `payment-proofs/${Date.now()}-${orderData.orderId}.jpg`);
-                        await uploadString(storageRef, orderData.paymentProof, 'data_url');
-                        finalProofUrl = await getDownloadURL(storageRef);
-                    }
-
                     const ordersCol = collection(db, 'orders');
                     const timestamp = new Date().toISOString();
                     
                     const docRef = await addDoc(ordersCol, {
                         ...orderData,
-                        paymentProof: finalProofUrl || '',
                         createdAt: timestamp,
                         updatedAt: timestamp
                     });
@@ -141,7 +131,6 @@ export const useUserStore = create<UserState>()(
                     return { 
                         id: docRef.id, 
                         ...orderData, 
-                        paymentProof: finalProofUrl,
                         createdAt: timestamp 
                     };
                 } catch (error) {

@@ -32,7 +32,7 @@ const orderSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['COD', 'Online'],
+        enum: ['COD'],
         required: true
     },
     paymentProof: { type: String }, // Base64 string for online payment screenshot
