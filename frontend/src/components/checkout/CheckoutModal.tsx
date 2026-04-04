@@ -1,12 +1,11 @@
-import { useState, type ChangeEvent } from 'react';
-import { X, MapPin, CheckCircle2, QrCode, CreditCard, Banknote, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
+import { X, MapPin, CheckCircle2, Banknote, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import qrCode from '../../assets/payment-qr.jpg';
 
 interface CheckoutModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (details: { name: string; phone: string; address: any; location: any; paymentMethod: 'COD' | 'Online'; paymentProof?: string }) => void;
+    onSubmit: (details: { name: string; phone: string; address: any; location: any; paymentMethod: 'COD'; paymentProof?: string }) => void;
     totalAmount: number;
 }
 
@@ -23,19 +22,10 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
     });
     const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [loadingLocation, setLoadingLocation] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Online'>('COD');
-    const [paymentProof, setPaymentProof] = useState<string>('');
+    const [paymentMethod] = useState<'COD'>('COD');
+    const [paymentProof] = useState<string>('');
 
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPaymentProof(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+
 
     const handleNext = () => setStep(step < 3 ? (step + 1) as 1 | 2 | 3 : 3);
     const handleBack = () => setStep(step > 1 ? (step - 1) as 1 | 2 | 3 : 1);
@@ -88,7 +78,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
 
     const isStep1Valid = name.trim() !== '' && phone.length >= 10;
     const isStep2Valid = address.street.trim() !== '' && address.city.trim() !== '' && address.pincode.length >= 6;
-    const isStep3Valid = paymentMethod === 'COD' || (paymentMethod === 'Online' && paymentProof !== '');
+    const isStep3Valid = true; // COD is always selected and valid
 
     return (
         <AnimatePresence>
@@ -279,107 +269,19 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                             <h3 className="text-lg font-bold text-gray-900 mb-1">Payment Method</h3>
                                             <p className="text-sm text-gray-500">Choose how you want to pay</p>
                                         </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <label 
-                                                className={`relative flex flex-col p-4 border-2 rounded-2xl cursor-pointer transition-all ${
-                                                    paymentMethod === 'COD' 
-                                                    ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10' 
-                                                    : 'border-gray-200 hover:border-gray-300 bg-white'
-                                                }`}
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <div 
+                                                className="relative flex flex-col p-4 border-2 border-primary bg-primary/5 rounded-2xl shadow-sm shadow-primary/10"
                                             >
-                                                <input
-                                                    type="radio"
-                                                    name="paymentMethod"
-                                                    value="COD"
-                                                    checked={paymentMethod === 'COD'}
-                                                    onChange={() => setPaymentMethod('COD')}
-                                                    className="sr-only"
-                                                />
                                                 <div className="flex items-center gap-3 mb-1">
-                                                    <div className={`p-2 rounded-full ${paymentMethod === 'COD' ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+                                                    <div className="p-2 rounded-full bg-primary/20 text-primary">
                                                         <Banknote size={18} />
                                                     </div>
                                                     <span className="font-bold text-gray-900">Cash on Delivery</span>
                                                 </div>
                                                 <span className="text-xs text-gray-500 ml-11">Pay via cash or UPI at your doorstep</span>
-                                            </label>
-
-                                            <label 
-                                                className={`relative flex flex-col p-4 border-2 rounded-2xl cursor-pointer transition-all ${
-                                                    paymentMethod === 'Online' 
-                                                    ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10' 
-                                                    : 'border-gray-200 hover:border-gray-300 bg-white'
-                                                }`}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    name="paymentMethod"
-                                                    value="Online"
-                                                    checked={paymentMethod === 'Online'}
-                                                    onChange={() => setPaymentMethod('Online')}
-                                                    className="sr-only"
-                                                />
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <div className={`p-2 rounded-full ${paymentMethod === 'Online' ? 'bg-primary/20 text-primary' : 'bg-gray-100 text-gray-500'}`}>
-                                                        <CreditCard size={18} />
-                                                    </div>
-                                                    <span className="font-bold text-gray-900">Pay Online</span>
-                                                </div>
-                                                <span className="text-xs text-gray-500 ml-11">Scan QR code now and upload proof</span>
-                                            </label>
+                                            </div>
                                         </div>
-
-                                        <AnimatePresence>
-                                            {paymentMethod === 'Online' && (
-                                                <motion.div 
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: 'auto' }}
-                                                    exit={{ opacity: 0, height: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 mt-4">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm mb-3">
-                                                                <img src={qrCode} alt="GPay QR" className="w-32 h-32 object-contain rounded-lg" />
-                                                            </div>
-                                                            <p className="font-bold text-gray-900 text-lg mb-0.5">+91 96052 06865</p>
-                                                            <p className="text-xs text-gray-500 mb-5">Google Pay / PhonePe / Paytm</p>
-                                                            
-                                                            <div className="w-full relative">
-                                                                <input
-                                                                    type="file"
-                                                                    accept="image/*"
-                                                                    id="payment-proof"
-                                                                    onChange={handleFileChange}
-                                                                    className="hidden"
-                                                                />
-                                                                <label 
-                                                                    htmlFor="payment-proof"
-                                                                    className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl border-2 border-dashed transition-colors cursor-pointer ${
-                                                                        paymentProof 
-                                                                        ? 'border-green-400 bg-green-50 text-green-700' 
-                                                                        : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-600'
-                                                                    }`}
-                                                                >
-                                                                    {paymentProof ? (
-                                                                        <>
-                                                                            <CheckCircle2 size={18} />
-                                                                            <span className="font-semibold text-sm">Screenshot Attached!</span>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <QrCode size={18} />
-                                                                            <span className="font-medium text-sm">Upload Payment Screenshot</span>
-                                                                        </>
-                                                                    )}
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
                                     </div>
                                 )}
                             </motion.div>

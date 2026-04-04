@@ -43,7 +43,7 @@ export function Cart() {
         };
 
         try {
-            const savedOrder: any = await addOrder(newOrder);
+            await addOrder(newOrder);
 
             const addressText = `%0A%0A*Delivery Details:*%0AName: ${details.name}%0APhone: ${details.phone}%0AAddress: ${details.address.street}, ${details.address.city} - ${details.address.pincode}%0ALandmark: ${details.address.landmark || ''}`;
 
@@ -56,9 +56,6 @@ export function Cart() {
             const totalText = `%0A*Total Estimate: ₹${totalPrice}*`;
 
             let paymentText = `%0A*Payment Method:* ${details.paymentMethod}`;
-            if (details.paymentMethod === 'Online' && savedOrder?.paymentProof) {
-                paymentText += `%0A*Payment Proof:* ${savedOrder.paymentProof}`;
-            }
 
             const userText = `%0A%0A*Customer:* ${user?.name || details.name}`;
 
