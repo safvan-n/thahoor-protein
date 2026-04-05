@@ -47,6 +47,7 @@ interface UserState {
     isAuthenticated: boolean;
     orders: Order[];
     loadingOrders: boolean;
+    orderUnsubscribe: (() => void) | null;
     fetchOrders: (email: string) => void;
     login: (user: User) => void;
     logout: () => void;
@@ -61,6 +62,7 @@ export const useUserStore = create<UserState>()(
             isAuthenticated: false,
             orders: [],
             loadingOrders: false,
+            orderUnsubscribe: null,
 
             initializeAuth: () => {
                 onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
@@ -76,6 +78,11 @@ export const useUserStore = create<UserState>()(
                         get().fetchOrders(firebaseUser.email || '');
                     } else {
                         set({ user: null, isAuthenticated: false, orders: [] });
+                        const currentUnsubscribe = get().orderUnsubscribe;
+                        if (currentUnsubscribe) {
+                            currentUnsubscribe();
+                            set({ orderUnsubscribe: null });
+                        }
                     }
                 });
             },
@@ -83,6 +90,12 @@ export const useUserStore = create<UserState>()(
             fetchOrders: (email: string) => {
                 if (!email) return;
                 
+                // Clear existing subscription if any
+                const currentUnsubscribe = get().orderUnsubscribe;
+                if (currentUnsubscribe) {
+                    currentUnsubscribe();
+                }
+
                 set({ loadingOrders: true });
                 const ordersCol = collection(db, 'orders');
                 const q = query(
@@ -104,7 +117,7 @@ export const useUserStore = create<UserState>()(
                     set({ loadingOrders: false });
                 });
 
-                return unsubscribe;
+                set({ orderUnsubscribe: unsubscribe });
             },
 
             login: (user) => {
@@ -113,8 +126,12 @@ export const useUserStore = create<UserState>()(
             },
 
             logout: async () => {
+                const currentUnsubscribe = get().orderUnsubscribe;
+                if (currentUnsubscribe) {
+                    currentUnsubscribe();
+                }
                 await auth.signOut();
-                set({ user: null, isAuthenticated: false, orders: [] });
+                set({ user: null, isAuthenticated: false, orders: [], orderUnsubscribe: null });
             },
 
             addOrder: async (orderData) => {
@@ -122,16 +139,19 @@ export const useUserStore = create<UserState>()(
                     const ordersCol = collection(db, 'orders');
                     const timestamp = new Date().toISOString();
                     
-                    const docRef = await addDoc(ordersCol, {
+                    const orderToSave = {
                         ...orderData,
+                        isArchived: false,
+                        isDeletedByUser: false,
                         createdAt: timestamp,
                         updatedAt: timestamp
-                    });
+                    };
+
+                    const docRef = await addDoc(ordersCol, orderToSave);
 
                     return { 
                         id: docRef.id, 
-                        ...orderData, 
-                        createdAt: timestamp 
+                        ...orderToSave
                     };
                 } catch (error) {
                     console.error('Failed to add order to Firestore:', error);

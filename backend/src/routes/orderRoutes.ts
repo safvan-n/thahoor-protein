@@ -13,6 +13,8 @@ router.post('/', async (req, res) => {
         
         const docRef = await ordersCol.add({
             ...orderData,
+            isArchived: false,
+            isDeletedByUser: false,
             createdAt: timestamp,
             updatedAt: timestamp
         });
