@@ -30,6 +30,7 @@ export function DeliveryLogin() {
                 await setDoc(doc(db, 'drivers', email.toLowerCase()), {
                     name,
                     email: email.toLowerCase(),
+                    role: 'driver',
                     status: 'online',
                     lastActive: serverTimestamp()
                 }, { merge: true });
@@ -37,6 +38,20 @@ export function DeliveryLogin() {
             } else {
                 // Sign In logic
                 await signInWithEmailAndPassword(auth, email, password);
+                
+                // Verify they are in the drivers collection
+                const { getDoc } = await import('firebase/firestore');
+                const driverDoc = await getDoc(doc(db, 'drivers', email.toLowerCase()));
+                if (!driverDoc.exists()) {
+                    // Auto-register if they exist in auth but not in drivers (fallback)
+                    await setDoc(doc(db, 'drivers', email.toLowerCase()), {
+                        name: auth.currentUser?.displayName || 'Fleet Pilot',
+                        email: email.toLowerCase(),
+                        role: 'driver',
+                        status: 'online',
+                        lastActive: serverTimestamp()
+                    }, { merge: true });
+                }
             }
             
             localStorage.setItem('isDriver', 'true');
@@ -46,6 +61,9 @@ export function DeliveryLogin() {
             let message = 'Access denied. Check your credentials.';
             if (err.code === 'auth/email-already-in-use') message = 'This email is already registered.';
             else if (err.code === 'auth/weak-password') message = 'Choose a stronger password (6+ chars).';
+            else if (err.code === 'auth/user-not-found') message = 'No pilot found with this email. Join us!';
+            else if (err.code === 'auth/wrong-password') message = 'Incorrect passcode. Please try again.';
+            else if (err.code === 'auth/invalid-credential') message = 'Invalid credentials. Please verify your details.';
             setError(message);
         } finally {
             setLoading(false);
@@ -73,7 +91,10 @@ export function DeliveryLogin() {
             navigate('/delivery');
         } catch (err: any) {
             console.error('Google login failed:', err);
-            setError('Auth failed. Please try again.');
+            let message = 'Auth failed. Please try again.';
+            if (err.code === 'auth/popup-closed-by-user') message = 'Login cancelled. Please try again.';
+            else if (err.code === 'auth/unauthorized-domain') message = 'This domain is not authorized for login.';
+            setError(message);
         } finally {
             setLoading(false);
         }
