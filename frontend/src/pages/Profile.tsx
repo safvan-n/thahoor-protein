@@ -2,6 +2,7 @@ import { useUserStore } from '../store/userStore';
 import { Package, Truck, CheckCircle, Clock, User, LogOut, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 export function Profile() {
     const { user, orders, logout, isAuthenticated } = useUserStore();
@@ -54,131 +55,161 @@ export function Profile() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-12">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* User Info Card */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-                        <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 text-primary">
-                                <User size={48} />
-                            </div>
-                            <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
-                            <p className="text-gray-500 mb-8">{user.email}</p>
-
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center justify-center gap-2 text-red-600 font-medium py-3 px-6 rounded-xl border-2 border-red-50 hover:bg-red-50 transition-colors"
-                            >
-                                <LogOut size={20} />
-                                Log Out
-                            </button>
-                        </div>
+        <div className="container py-12 md:py-24">
+            <div className="max-w-6xl mx-auto">
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col md:flex-row items-end justify-between gap-6 mb-12 border-b border-gray-100 pb-12"
+                >
+                    <div className="text-center md:text-left">
+                        <span className="text-primary font-bold uppercase tracking-[0.4em] text-[10px] mb-4 block">Patron's Lounge</span>
+                        <h1 className="text-4xl md:text-6xl font-serif font-black text-gray-900 tracking-tighter">Your Account</h1>
                     </div>
-                </div>
+                    
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 text-gray-400 hover:text-red-600 font-bold uppercase tracking-widest text-[10px] transition-all group"
+                    >
+                        <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        Log Out From Archive
+                    </button>
+                </motion.div>
 
-                {/* Orders Section */}
-                <div className="lg:col-span-2">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                        <Package className="text-primary" /> Order History
-                    </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                    {/* User Profile Card */}
+                    <div className="lg:col-span-4">
+                        <div className="bg-white border border-gray-100 p-8 md:p-10 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 -mr-12 -mt-12 rounded-full group-hover:scale-110 transition-transform duration-700"></div>
+                            
+                            <div className="relative z-10">
+                                <div className="w-20 h-20 bg-gray-900 text-white rounded-none flex items-center justify-center mb-8 shadow-2xl">
+                                    <User size={32} />
+                                </div>
+                                
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-3 block">Identity</span>
+                                <h2 className="text-3xl font-serif font-black text-gray-900 mb-2">{user.name}</h2>
+                                <p className="text-gray-400 font-medium tracking-tight mb-8">{user.email}</p>
 
-                    {(!orders || orders.length === 0) ? (
-                        <div className="bg-white rounded-2xl p-12 text-center border border-dashed border-gray-300">
-                            <Package className="mx-auto text-gray-300 mb-4" size={48} />
-                            <p className="text-gray-500 text-lg">No orders yet.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {orders.map((order) => (
-                                <div key={order.id || Math.random()} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative group">
-                                    {/* Delete Button */}
-                                    <button
-                                        onClick={() => handleDeleteOrder(order.id)}
-                                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-20"
-                                        title="Delete from History"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-
-                                    <div className="p-6">
-                                        <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
-                                            <div>
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <span className="font-bold text-lg text-gray-800">Order #{order.orderId || order.id?.slice(-6) || 'NM-' + Math.random().toString(36).substr(2, 4)}</span>
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide 
-                                                        ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                                            order.status === 'On the Way' ? 'bg-blue-100 text-blue-700' :
-                                                                'bg-yellow-100 text-yellow-700'}`}>
-                                                        {order.status || 'Placed'}
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm text-gray-500 flex items-center gap-2">
-                                                    <Clock size={14} />
-                                                    {new Date(order.createdAt || (order as any).date || Date.now()).toLocaleDateString()} at {new Date(order.createdAt || (order as any).date || Date.now()).toLocaleTimeString()}
-                                                </p>
-                                                {order.customer?.address ? (
-                                                    <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg inline-block">
-                                                        <span className="font-bold text-gray-700">Delivery to:</span> {order.customer.address.street || ''}, {order.customer.address.city || ''}
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                            <div className="text-right mr-10">
-                                                <p className="text-sm text-gray-500">Total Amount</p>
-                                                <p className="font-bold text-xl text-primary">₹{(order.totalAmount || (order as any).total || 0).toFixed(0)}</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Progress Tracker (Visual Mockup) */}
-                                        <div className="relative mb-8 px-2">
-                                            <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full"></div>
-                                            <div className="absolute top-1/2 left-0 h-1 bg-primary -translate-y-1/2 rounded-full transition-all duration-1000"
-                                                style={{ width: order.status === 'Delivered' ? '100%' : order.status === 'On the Way' ? '66%' : '33%' }}></div>
-
-                                            <div className="relative flex justify-between">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 shadow-sm border-2 border-white">
-                                                        <Package size={14} />
-                                                    </div>
-                                                    <span className="text-xs font-medium text-gray-600">Placed</span>
-                                                </div>
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 shadow-sm border-2 border-white 
-                                                        ${['On the Way', 'Delivered'].includes(order.status) ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
-                                                        <Truck size={14} />
-                                                    </div>
-                                                    <span className="text-xs font-medium text-gray-600">On Way</span>
-                                                </div>
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 shadow-sm border-2 border-white 
-                                                        ${order.status === 'Delivered' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
-                                                        <CheckCircle size={14} />
-                                                    </div>
-                                                    <span className="text-xs font-medium text-gray-600">Delivered</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gray-50 rounded-xl p-4">
-                                            <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Items Ordered</h4>
-                                            <ul className="space-y-2">
-                                                {order.items && order.items.length > 0 ? (
-                                                    order.items.map((item, idx) => (
-                                                        <li key={idx} className="flex justify-between text-sm text-gray-600">
-                                                            <span>{item.name}</span>
-                                                            <span className="font-medium">x {item.qty}kg</span>
-                                                        </li>
-                                                    ))
-                                                ) : (
-                                                    <li className="text-sm text-gray-500">No items found</li>
-                                                )}
-                                            </ul>
-                                        </div>
+                                <div className="pt-8 border-t border-gray-50">
+                                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                                        <span>Status</span>
+                                        <span className="text-green-600">Active Member</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                        <span>Join Date</span>
+                                        <span className="text-gray-900">Premium Tier</span>
                                     </div>
                                 </div>
-                            ))}
+                            </div>
                         </div>
-                    )}
+                    </div>
+
+                    {/* Order History */}
+                    <div className="lg:col-span-8">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-2xl font-serif font-black text-gray-900 tracking-tight flex items-center gap-4">
+                                <Package className="text-primary" size={24} /> 
+                                Purchase Archive
+                            </h2>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                {orders.length} Selection(s)
+                            </span>
+                        </div>
+
+                        {(!orders || orders.length === 0) ? (
+                            <div className="bg-gray-50 border border-dashed border-gray-200 py-24 text-center rounded-none group">
+                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm group-hover:scale-110 transition-transform">
+                                    <Package className="text-gray-300" size={32} />
+                                </div>
+                                <p className="text-gray-400 font-serif italic text-xl">The archive is currently empty.</p>
+                                <button className="mt-8 text-primary font-bold uppercase tracking-widest text-[10px] hover:underline">Start Your Collection</button>
+                            </div>
+                        ) : (
+                            <div className="space-y-8">
+                                {orders.map((order) => (
+                                    <motion.div 
+                                        key={order.id}
+                                        initial={{ opacity: 0, x: 20 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true }}
+                                        className="bg-white border border-gray-100 shadow-sm relative group overflow-hidden"
+                                    >
+                                        {/* Status Header */}
+                                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 bg-gray-50/50">
+                                            <div className="flex items-center gap-4">
+                                                <span className={`w-2 h-2 rounded-full animate-pulse ${
+                                                    order.status === 'Delivered' ? 'bg-green-500' :
+                                                    order.status === 'On the Way' ? 'bg-blue-500' : 'bg-primary'
+                                                }`}></span>
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-900">
+                                                    {order.status || 'Order Placed'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-gray-400">
+                                                <span className="text-[10px] font-bold uppercase tracking-widest">#{order.orderId || order.id?.slice(-8)}</span>
+                                                <button
+                                                    onClick={() => handleDeleteOrder(order.id)}
+                                                    className="p-1 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-8">
+                                            <div className="flex flex-col md:flex-row justify-between gap-8 mb-10">
+                                                <div className="space-y-4">
+                                                    <p className="text-xs text-gray-500 flex items-center gap-2">
+                                                        <Clock size={14} />
+                                                        Archived on {new Date(order.createdAt || (order as any).date || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </p>
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        {order.items?.map((item, idx) => (
+                                                            <div key={idx} className="flex items-center gap-4 group/item">
+                                                                <span className="text-primary font-serif italic text-lg leading-none">x{item.qty}kg</span>
+                                                                <span className="text-gray-900 font-bold uppercase tracking-tighter text-sm group-hover/item:translate-x-1 transition-transform">{item.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="text-left md:text-right border-t md:border-t-0 md:border-l border-gray-50 pt-8 md:pt-0 md:pl-12">
+                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.4em] mb-2 block">Premium Value</span>
+                                                    <p className="text-4xl font-serif font-black text-gray-900 leading-none tracking-tighter">₹{(order.totalAmount || (order as any).total || 0).toFixed(0)}</p>
+                                                    {order.paymentMethod && (
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-300 mt-4 block">{order.paymentMethod} Payment</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Minimalist Progress Meter */}
+                                            <div className="relative pt-6">
+                                                <div className="absolute top-0 left-0 w-full h-[1px] bg-gray-100"></div>
+                                                <div className="absolute top-0 left-0 h-[3px] bg-primary transition-all duration-1000 -translate-y-[1px]"
+                                                    style={{ width: order.status === 'Delivered' ? '100%' : order.status === 'On the Way' ? '50%' : '15%' }}></div>
+                                                
+                                                <div className="flex justify-between text-[8px] font-black uppercase tracking-[0.3em] text-gray-300 pt-4">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <Package size={12} className={order.status ? 'text-gray-900' : 'text-primary'} />
+                                                        <span className={order.status ? 'text-gray-900' : 'text-primary'}>Curated</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <Truck size={12} className={order.status === 'On the Way' ? 'text-primary' : 'text-gray-300'} />
+                                                        <span className={order.status === 'On the Way' ? 'text-primary' : order.status === 'Delivered' ? 'text-gray-900' : ''}>Transit</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <CheckCircle size={12} className={order.status === 'Delivered' ? 'text-green-600' : 'text-gray-300'} />
+                                                        <span className={order.status === 'Delivered' ? 'text-green-600' : ''}>Delivered</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

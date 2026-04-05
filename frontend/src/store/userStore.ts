@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { db, auth, storage } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { 
     collection, 
     query, 
@@ -10,7 +10,7 @@ import {
     limit,
     addDoc
 } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 export interface User {
@@ -38,7 +38,7 @@ export interface Order {
     totalAmount: number;
     items: { name: string; qty: number; price: number }[];
     deliveryBoy?: { name: string; phone: string };
-    paymentMethod: 'COD' | 'Online';
+    paymentMethod: 'COD';
     paymentProof?: string;
 }
 
@@ -47,6 +47,7 @@ interface UserState {
     isAuthenticated: boolean;
     orders: Order[];
     loadingOrders: boolean;
+    orderUnsubscribe: (() => void) | null;
     fetchOrders: (email: string) => void;
     login: (user: User) => void;
     logout: () => void;
@@ -61,6 +62,7 @@ export const useUserStore = create<UserState>()(
             isAuthenticated: false,
             orders: [],
             loadingOrders: false,
+            orderUnsubscribe: null,
 
             initializeAuth: () => {
                 onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
@@ -76,6 +78,11 @@ export const useUserStore = create<UserState>()(
                         get().fetchOrders(firebaseUser.email || '');
                     } else {
                         set({ user: null, isAuthenticated: false, orders: [] });
+                        const currentUnsubscribe = get().orderUnsubscribe;
+                        if (currentUnsubscribe) {
+                            currentUnsubscribe();
+                            set({ orderUnsubscribe: null });
+                        }
                     }
                 });
             },
@@ -83,6 +90,12 @@ export const useUserStore = create<UserState>()(
             fetchOrders: (email: string) => {
                 if (!email) return;
                 
+                // Clear existing subscription if any
+                const currentUnsubscribe = get().orderUnsubscribe;
+                if (currentUnsubscribe) {
+                    currentUnsubscribe();
+                }
+
                 set({ loadingOrders: true });
                 const ordersCol = collection(db, 'orders');
                 const q = query(
@@ -104,7 +117,7 @@ export const useUserStore = create<UserState>()(
                     set({ loadingOrders: false });
                 });
 
-                return unsubscribe;
+                set({ orderUnsubscribe: unsubscribe });
             },
 
             login: (user) => {
@@ -113,36 +126,32 @@ export const useUserStore = create<UserState>()(
             },
 
             logout: async () => {
+                const currentUnsubscribe = get().orderUnsubscribe;
+                if (currentUnsubscribe) {
+                    currentUnsubscribe();
+                }
                 await auth.signOut();
-                set({ user: null, isAuthenticated: false, orders: [] });
+                set({ user: null, isAuthenticated: false, orders: [], orderUnsubscribe: null });
             },
 
             addOrder: async (orderData) => {
                 try {
-                    let finalProofUrl = orderData.paymentProof;
-
-                    // If proof is a base64 string, upload to Storage
-                    if (orderData.paymentMethod === 'Online' && orderData.paymentProof?.startsWith('data:image')) {
-                        const storageRef = ref(storage, `payment-proofs/${Date.now()}-${orderData.orderId}.jpg`);
-                        await uploadString(storageRef, orderData.paymentProof, 'data_url');
-                        finalProofUrl = await getDownloadURL(storageRef);
-                    }
-
                     const ordersCol = collection(db, 'orders');
                     const timestamp = new Date().toISOString();
                     
-                    const docRef = await addDoc(ordersCol, {
+                    const orderToSave = {
                         ...orderData,
-                        paymentProof: finalProofUrl || '',
+                        isArchived: false,
+                        isDeletedByUser: false,
                         createdAt: timestamp,
                         updatedAt: timestamp
-                    });
+                    };
+
+                    const docRef = await addDoc(ordersCol, orderToSave);
 
                     return { 
                         id: docRef.id, 
-                        ...orderData, 
-                        paymentProof: finalProofUrl,
-                        createdAt: timestamp 
+                        ...orderToSave
                     };
                 } catch (error) {
                     console.error('Failed to add order to Firestore:', error);

@@ -15,6 +15,7 @@ import {
 
 interface ProductState {
     products: Cut[];
+    isLoading: boolean;
     fetchProducts: () => Promise<void>;
     updateProduct: (id: string, updates: Partial<Cut>) => Promise<void>;
     deleteProduct: (id: string) => Promise<void>;
@@ -25,8 +26,10 @@ export const useProductStore = create<ProductState>()(
     persist(
         (set) => ({
             products: [],
+            isLoading: false,
 
             fetchProducts: async () => {
+                set({ isLoading: true });
                 try {
                     const productsCol = collection(db, 'products');
                     const productSnapshot = await getDocs(query(productsCol, orderBy('categoryId')));
@@ -35,9 +38,10 @@ export const useProductStore = create<ProductState>()(
                         id: doc.id
                     })) as Cut[];
                     
-                    set({ products: productList });
+                    set({ products: productList, isLoading: false });
                 } catch (error) {
                     console.error('Failed to fetch products from Firestore:', error);
+                    set({ isLoading: false });
                 }
             },
 
