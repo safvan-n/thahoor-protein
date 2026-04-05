@@ -86,9 +86,12 @@ export function AdminDashboard() {
     // Notification Sound
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
+    const isInitialLoad = useRef(true);
+
     useEffect(() => {
         // Initialize Audio
         audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audioRef.current.volume = 1.0;
 
         // Firestore Real-time listener for ALL orders (Admin view)
         const ordersCol = collection(db, 'orders');
@@ -100,16 +103,25 @@ export function AdminDashboard() {
                 ...d.data()
             })) as any[];
 
+            if (isInitialLoad.current) {
+                setOrders(orderList);
+                isInitialLoad.current = false;
+                return;
+            }
+
             // Play sound for NEW orders only
-            setOrders((prev) => {
-                if (prev.length > 0 && orderList.length > prev.length) {
-                    const isNew = orderList[0].createdAt > (prev[0]?.createdAt || '');
-                    if (isNew) {
-                         audioRef.current?.play().catch((e: any) => console.log('Audio play failed:', e));
-                    }
+            let hasNewOrder = false;
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    hasNewOrder = true;
                 }
-                return orderList;
             });
+
+            if (hasNewOrder) {
+                audioRef.current?.play().catch((e: any) => console.log('Audio play failed:', e));
+            }
+
+            setOrders(orderList);
         });
 
         return () => {
@@ -342,16 +354,27 @@ export function AdminDashboard() {
                                 + Add Category
                             </button>
                         ) : (
-                            <button
-                                onClick={() => {
-                                    fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`)
-                                        .then(res => res.json())
-                                        .then(data => setOrders(data));
-                                }}
-                                className="text-primary hover:bg-red-50 px-3 py-1 rounded-lg text-sm font-bold transition-colors"
-                            >
-                                Refresh List
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        audioRef.current?.play().catch((e: any) => alert('Allow sound: ' + e));
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-100 hover:bg-yellow-100 transition-colors"
+                                    title="Test notification sound"
+                                >
+                                    🔔 Test Sound
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`)
+                                            .then(res => res.json())
+                                            .then(data => setOrders(data));
+                                    }}
+                                    className="text-primary hover:bg-red-50 px-3 py-1 rounded-lg text-sm font-bold transition-colors"
+                                >
+                                    Refresh List
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
