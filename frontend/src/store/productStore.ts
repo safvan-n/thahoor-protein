@@ -8,9 +8,7 @@ import {
     addDoc, 
     updateDoc, 
     deleteDoc, 
-    doc,
-    query,
-    orderBy 
+    doc
 } from 'firebase/firestore';
 
 interface ProductState {
@@ -32,11 +30,14 @@ export const useProductStore = create<ProductState>()(
                 set({ isLoading: true });
                 try {
                     const productsCol = collection(db, 'products');
-                    const productSnapshot = await getDocs(query(productsCol, orderBy('categoryId')));
+                    const productSnapshot = await getDocs(productsCol);
                     const productList = productSnapshot.docs.map(doc => ({
                         ...doc.data(),
                         id: doc.id
                     })) as Cut[];
+                    
+                    // Sort by categoryId on client side to avoid index issues
+                    productList.sort((a, b) => String(a.categoryId).localeCompare(String(b.categoryId)));
                     
                     set({ products: productList, isLoading: false });
                 } catch (error) {
