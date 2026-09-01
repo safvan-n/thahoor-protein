@@ -12,20 +12,21 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    // Orders: Customers can read/write their own, admins all
+    // Orders: Customers can create, and read/write their own. Admins can read/write all.
     match /orders/{orderId} {
-      allow read, write: if request.auth != null;
+      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth != null && (request.auth.token.email == resource.data.customer.email || request.auth.token.admin == true);
     }
 
     // Drivers: Public read (for checkout assignment), write for admins
     match /drivers/{driverId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    // Default: allow authenticated access
+    // Default: explicitly deny access to any unconfigured collections
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
