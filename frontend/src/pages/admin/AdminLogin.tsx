@@ -18,8 +18,18 @@ export function AdminLogin() {
         setError('');
 
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            navigate('/admin/dashboard');
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const tokenResult = await userCredential.user.getIdTokenResult(true);
+            
+            // Allow fallback check with environment variable if needed during development
+            const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+            
+            if (tokenResult.claims.admin === true || userCredential.user.email === adminEmail) {
+                navigate('/admin/dashboard');
+            } else {
+                await auth.signOut();
+                setError('You do not have administrative privileges.');
+            }
         } catch (err: any) {
             console.error('Admin login failed:', err);
             setError('Invalid admin credentials. Please try again.');

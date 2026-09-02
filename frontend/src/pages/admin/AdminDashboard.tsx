@@ -20,6 +20,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Cut, type Category } from '../../types';
 import { db } from '../../lib/firebase';
+import { ImageUploader } from '../../components/admin/ImageUploader';
+import { uploadImageToStorage } from '../../utils/uploadImage';
 import { 
     collection, 
     onSnapshot, 
@@ -65,15 +67,18 @@ export function AdminDashboard() {
     const [catName, setCatName] = useState('');
     const [catDesc, setCatDesc] = useState('');
     const [catImage, setCatImage] = useState('');
+    const [catImageFile, setCatImageFile] = useState<File | null>(null);
 
     // Form states for editing
     const [editPrice, setEditPrice] = useState<number>(0);
     const [editImage, setEditImage] = useState<string>('');
+    const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
     // Form states for editing category
     const [editCatName, setEditCatName] = useState('');
     const [editCatDesc, setEditCatDesc] = useState('');
     const [editCatImage, setEditCatImage] = useState('');
+    const [editCatImageFile, setEditCatImageFile] = useState<File | null>(null);
 
     // Form states for adding product
     const [newName, setNewName] = useState('');
@@ -81,6 +86,9 @@ export function AdminDashboard() {
     const [newCategory, setNewCategory] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newImage, setNewImage] = useState('');
+    const [newImageFile, setNewImageFile] = useState<File | null>(null);
+
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories'>('products');
     const [orders, setOrders] = useState<any[]>([]);
@@ -132,14 +140,34 @@ export function AdminDashboard() {
     }, []);
 
     useEffect(() => {
+        const checkAdmin = async () => {
+            const user = auth.currentUser;
+            if (!user) {
+                navigate('/admin');
+                return;
+            }
+            
+            try {
+                // Force token refresh to ensure we have the latest claims
+                const tokenResult = await user.getIdTokenResult(true);
+                
+                // Also check environment variable for local testing fallback (optional but keeping for safety during dev)
+                const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+                
+                if (tokenResult.claims.admin !== true && user.email !== adminEmail) {
+                    navigate('/admin');
+                }
+            } catch (error) {
+                console.error("Error checking admin claims", error);
+                navigate('/admin');
+            }
+        };
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (!user) {
                 navigate('/admin');
             } else {
-                const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-                if (adminEmail && user.email !== adminEmail) {
-                    navigate('/admin');
-                }
+                checkAdmin();
             }
         });
         return () => unsubscribe();
@@ -229,38 +257,66 @@ export function AdminDashboard() {
         window.open(`https://wa.me/?text=${text}`, '_blank');
     };
 
-    const saveProduct = () => {
+    const saveProduct = async () => {
         if (editingProduct) {
-            updateProduct(editingProduct.id, {
-                pricePerKg: editPrice,
-                image: editImage
-            });
-            setEditingProduct(null);
+            setIsUploadingImage(true);
+            try {
+                let imageUrl = editImage;
+                if (editImageFile) {
+                    imageUrl = await uploadImageToStorage(editImageFile, 'products', editingProduct.id);
+                }
+                
+                await updateProduct(editingProduct.id, {
+                    pricePerKg: editPrice,
+                    image: imageUrl
+                });
+                setEditingProduct(null);
+                setEditImageFile(null);
+            } catch (error) {
+                alert("Failed to update product");
+            } finally {
+                setIsUploadingImage(false);
+            }
         }
     };
 
 
-    const handleAddProduct = () => {
-        if (!newName || !newPrice || !newImage) {
-            alert("Please fill all fields");
+    const handleAddProduct = async () => {
+        if (!newName || !newPrice || (!newImage && !newImageFile)) {
+            alert("Please fill all fields and select an image");
             return;
         }
 
-        addProduct({
-            id: Date.now().toString(),
-            name: newName,
-            pricePerKg: newPrice,
-            categoryId: newCategory,
-            description: newDescription,
-            image: newImage
-        });
+        setIsUploadingImage(true);
+        try {
+            const productId = Date.now().toString();
+            let imageUrl = newImage;
+            
+            if (newImageFile) {
+                imageUrl = await uploadImageToStorage(newImageFile, 'products', productId);
+            }
 
-        setIsAddingProduct(false);
-        // Reset form
-        setNewName('');
-        setNewPrice(0);
-        setNewDescription('');
-        setNewImage('');
+            await addProduct({
+                id: productId,
+                name: newName,
+                pricePerKg: newPrice,
+                categoryId: newCategory,
+                description: newDescription,
+                image: imageUrl
+            });
+
+            setIsAddingProduct(false);
+            // Reset form
+            setNewName('');
+            setNewPrice(0);
+            setNewDescription('');
+            setNewImage('');
+            setNewImageFile(null);
+        } catch (error) {
+            alert("Failed to add product");
+        } finally {
+            setIsUploadingImage(false);
+        }
     };
 
     const handleDeleteProduct = (id: string) => {
@@ -270,32 +326,59 @@ export function AdminDashboard() {
     };
 
     const handleAddCategory = async () => {
-        if (!catName || !catImage) {
+        if (!catName || (!catImage && !catImageFile)) {
             alert("Please fill name and image");
             return;
         }
 
-        await addCategory({
-            id: Date.now().toString(),
-            name: catName,
-            description: catDesc,
-            image: catImage
-        });
+        setIsUploadingImage(true);
+        try {
+            const categoryId = Date.now().toString();
+            let imageUrl = catImage;
+            
+            if (catImageFile) {
+                imageUrl = await uploadImageToStorage(catImageFile, 'categories', categoryId);
+            }
 
-        setIsAddingCategory(false);
-        setCatName('');
-        setCatDesc('');
-        setCatImage('');
+            await addCategory({
+                id: categoryId,
+                name: catName,
+                description: catDesc,
+                image: imageUrl
+            });
+
+            setIsAddingCategory(false);
+            setCatName('');
+            setCatDesc('');
+            setCatImage('');
+            setCatImageFile(null);
+        } catch(error) {
+            alert("Failed to add category");
+        } finally {
+            setIsUploadingImage(false);
+        }
     };
 
-    const saveCategory = () => {
+    const saveCategory = async () => {
         if (editingCategory) {
-            updateCategory(editingCategory.id, {
-                name: editCatName,
-                description: editCatDesc,
-                image: editCatImage
-            });
-            setEditingCategory(null);
+            setIsUploadingImage(true);
+            try {
+                let imageUrl = editCatImage;
+                if (editCatImageFile) {
+                    imageUrl = await uploadImageToStorage(editCatImageFile, 'categories', editingCategory.id);
+                }
+                await updateCategory(editingCategory.id, {
+                    name: editCatName,
+                    description: editCatDesc,
+                    image: imageUrl
+                });
+                setEditingCategory(null);
+                setEditCatImageFile(null);
+            } catch(error) {
+                alert("Failed to update category");
+            } finally {
+                setIsUploadingImage(false);
+            }
         }
     };
 
@@ -657,44 +740,12 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
-
-                                    {/* Image Preview */}
-                                    <div className="mb-3 h-48 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
-                                        {editImage ? (
-                                            <>
-                                                <img src={editImage} alt="Preview" className="w-full h-full object-contain" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <p className="text-white font-medium">Click "Upload" to change</p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <p className="text-gray-400">No image</p>
-                                        )}
-                                    </div>
-
-                                    {/* Upload Button */}
-                                    <div className="flex gap-2">
-                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-                                            <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload New Image</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setEditImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
-
+                                    <ImageUploader
+                                        currentImage={editImage}
+                                        onFileSelect={setEditImageFile}
+                                        isUploading={isUploadingImage}
+                                    />
+                                    
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">
                                             OR paste an image URL below
@@ -702,7 +753,10 @@ export function AdminDashboard() {
                                         <input
                                             type="text"
                                             value={editImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEditImage(e.target.value)}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                setEditImage(e.target.value);
+                                                setEditImageFile(null);
+                                            }}
                                             placeholder="https://example.com/image.jpg"
                                             className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
                                         />
@@ -799,14 +853,28 @@ export function AdminDashboard() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Image Link</label>
-                                    <input
-                                        type="text"
-                                        value={newImage}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewImage(e.target.value)}
-                                        placeholder="https://example.com/image.jpg"
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                                    <ImageUploader
+                                        currentImage={newImage}
+                                        onFileSelect={setNewImageFile}
+                                        isUploading={isUploadingImage}
                                     />
+                                    
+                                    <div className="mt-3">
+                                        <p className="text-xs text-center text-gray-500">
+                                            OR paste an image URL below
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={newImage}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                setNewImage(e.target.value);
+                                                setNewImageFile(null);
+                                            }}
+                                            placeholder="https://example.com/image.jpg"
+                                            className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -878,50 +946,21 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category Image</label>
+                                    <ImageUploader
+                                        currentImage={catImage}
+                                        onFileSelect={setCatImageFile}
+                                        isUploading={isUploadingImage}
+                                    />
                                     
-                                    {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
-                                        {catImage ? (
-                                            <>
-                                                <img src={catImage} alt="Preview" className="w-full h-full object-contain" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <p className="text-white font-medium">Click "Upload" to change</p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <p className="text-gray-400">No image</p>
-                                        )}
-                                    </div>
-
-                                    {/* Upload Button */}
-                                    <div className="flex gap-2">
-                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-                                            <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload Image</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setCatImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
-
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">OR paste URL</p>
                                         <input
                                             type="text"
                                             value={catImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setCatImage(e.target.value)}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                setCatImage(e.target.value);
+                                                setCatImageFile(null);
+                                            }}
                                             placeholder="https://example.com/cat.jpg"
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
@@ -996,50 +1035,21 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category Image</label>
+                                    <ImageUploader
+                                        currentImage={editCatImage}
+                                        onFileSelect={setEditCatImageFile}
+                                        isUploading={isUploadingImage}
+                                    />
                                     
-                                    {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
-                                        {editCatImage ? (
-                                            <>
-                                                <img src={editCatImage} alt="Preview" className="w-full h-full object-contain" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <p className="text-white font-medium">Click "Upload" to change</p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <p className="text-gray-400">No image</p>
-                                        )}
-                                    </div>
-
-                                    {/* Upload Button */}
-                                    <div className="flex gap-2">
-                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-                                            <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload New Image</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setEditCatImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
-
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">OR paste URL</p>
                                         <input
                                             type="text"
                                             value={editCatImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEditCatImage(e.target.value)}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                setEditCatImage(e.target.value);
+                                                setEditCatImageFile(null);
+                                            }}
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
                                     </div>
