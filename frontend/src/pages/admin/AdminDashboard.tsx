@@ -73,6 +73,8 @@ export function AdminDashboard() {
     const [editPrice, setEditPrice] = useState<number>(0);
     const [editImage, setEditImage] = useState<string>('');
     const [editImageFile, setEditImageFile] = useState<File | null>(null);
+    const [editSecondaryImage, setEditSecondaryImage] = useState<string>('');
+    const [editSecondaryImageFile, setEditSecondaryImageFile] = useState<File | null>(null);
 
     // Form states for editing category
     const [editCatName, setEditCatName] = useState('');
@@ -87,6 +89,8 @@ export function AdminDashboard() {
     const [newDescription, setNewDescription] = useState('');
     const [newImage, setNewImage] = useState('');
     const [newImageFile, setNewImageFile] = useState<File | null>(null);
+    const [newSecondaryImage, setNewSecondaryImage] = useState('');
+    const [newSecondaryImageFile, setNewSecondaryImageFile] = useState<File | null>(null);
 
     const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -266,12 +270,19 @@ export function AdminDashboard() {
                     imageUrl = await uploadImageToStorage(editImageFile, 'products', editingProduct.id);
                 }
                 
+                let secondaryImageUrl = editSecondaryImage;
+                if (editSecondaryImageFile) {
+                    secondaryImageUrl = await uploadImageToStorage(editSecondaryImageFile, 'products', `${editingProduct.id}_secondary`);
+                }
+                
                 await updateProduct(editingProduct.id, {
                     pricePerKg: editPrice,
-                    image: imageUrl
+                    image: imageUrl,
+                    secondaryImage: secondaryImageUrl
                 });
                 setEditingProduct(null);
                 setEditImageFile(null);
+                setEditSecondaryImageFile(null);
             } catch (error) {
                 alert("Failed to update product");
             } finally {
@@ -296,13 +307,19 @@ export function AdminDashboard() {
                 imageUrl = await uploadImageToStorage(newImageFile, 'products', productId);
             }
 
+            let secondaryImageUrl = newSecondaryImage;
+            if (newSecondaryImageFile) {
+                secondaryImageUrl = await uploadImageToStorage(newSecondaryImageFile, 'products', `${productId}_secondary`);
+            }
+
             await addProduct({
                 id: productId,
                 name: newName,
                 pricePerKg: newPrice,
                 categoryId: newCategory,
                 description: newDescription,
-                image: imageUrl
+                image: imageUrl,
+                secondaryImage: secondaryImageUrl
             });
 
             setIsAddingProduct(false);
@@ -312,6 +329,8 @@ export function AdminDashboard() {
             setNewDescription('');
             setNewImage('');
             setNewImageFile(null);
+            setNewSecondaryImage('');
+            setNewSecondaryImageFile(null);
         } catch (error) {
             alert("Failed to add product");
         } finally {
@@ -501,6 +520,7 @@ export function AdminDashboard() {
                                                 setEditingProduct(product);
                                                 setEditPrice(product.pricePerKg);
                                                 setEditImage(product.image);
+                                                setEditSecondaryImage(product.secondaryImage || '');
                                             }}
                                             className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white text-gray-700 shadow-sm transition-all"
                                         >
@@ -762,6 +782,31 @@ export function AdminDashboard() {
                                         />
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
+                                    <ImageUploader
+                                        currentImage={editSecondaryImage}
+                                        onFileSelect={setEditSecondaryImageFile}
+                                        isUploading={isUploadingImage}
+                                    />
+                                    
+                                    <div className="mt-3">
+                                        <p className="text-xs text-center text-gray-500">
+                                            OR paste an image URL below
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={editSecondaryImage}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                setEditSecondaryImage(e.target.value);
+                                                setEditSecondaryImageFile(null);
+                                            }}
+                                            placeholder="https://example.com/secondary.jpg"
+                                            className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="mt-8 flex gap-3 justify-end">
@@ -872,6 +917,31 @@ export function AdminDashboard() {
                                                 setNewImageFile(null);
                                             }}
                                             placeholder="https://example.com/image.jpg"
+                                            className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
+                                    <ImageUploader
+                                        currentImage={newSecondaryImage}
+                                        onFileSelect={setNewSecondaryImageFile}
+                                        isUploading={isUploadingImage}
+                                    />
+                                    
+                                    <div className="mt-3">
+                                        <p className="text-xs text-center text-gray-500">
+                                            OR paste an image URL below
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={newSecondaryImage}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                setNewSecondaryImage(e.target.value);
+                                                setNewSecondaryImageFile(null);
+                                            }}
+                                            placeholder="https://example.com/secondary.jpg"
                                             className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
                                         />
                                     </div>

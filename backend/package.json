@@ -31,6 +31,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@types/caseless": "^0.12.5",
     "@types/socket.io": "^3.0.1"
   }
 }

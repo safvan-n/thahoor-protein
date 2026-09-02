@@ -12,6 +12,7 @@ export interface Cut {
     description: string;
     pricePerKg: number;
     image: string;
+    secondaryImage?: string;
     isAvailable?: boolean;
 }
 
