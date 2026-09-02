@@ -67,6 +67,7 @@ export function AdminDashboard() {
     // Form states for editing
     const [editPrice, setEditPrice] = useState<number>(0);
     const [editImage, setEditImage] = useState<string>('');
+    const [editSecondaryImage, setEditSecondaryImage] = useState<string>('');
 
     // Form states for editing category
     const [editCatName, setEditCatName] = useState('');
@@ -79,6 +80,7 @@ export function AdminDashboard() {
     const [newCategory, setNewCategory] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newImage, setNewImage] = useState('');
+    const [newSecondaryImage, setNewSecondaryImage] = useState('');
 
     const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories'>('products');
     const [orders, setOrders] = useState<any[]>([]);
@@ -222,9 +224,11 @@ export function AdminDashboard() {
         if (editingProduct) {
             updateProduct(editingProduct.id, {
                 pricePerKg: editPrice,
-                image: editImage
+                image: editImage,
+                secondaryImage: editSecondaryImage
             });
             setEditingProduct(null);
+            setEditSecondaryImage('');
         }
     };
 
@@ -241,7 +245,8 @@ export function AdminDashboard() {
             pricePerKg: newPrice,
             categoryId: newCategory,
             description: newDescription,
-            image: newImage
+            image: newImage,
+            secondaryImage: newSecondaryImage
         });
 
         setIsAddingProduct(false);
@@ -250,6 +255,7 @@ export function AdminDashboard() {
         setNewPrice(0);
         setNewDescription('');
         setNewImage('');
+        setNewSecondaryImage('');
     };
 
     const handleDeleteProduct = (id: string) => {
@@ -394,12 +400,18 @@ export function AdminDashboard() {
                                         alt={product.name}
                                         className="w-full h-full object-cover"
                                     />
+                                    {product.secondaryImage && (
+                                        <div className="absolute bottom-2 left-2 w-10 h-10 rounded-lg overflow-hidden border-2 border-white shadow-md bg-white">
+                                            <img src={product.secondaryImage} alt="Secondary" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
                                     <div className="absolute top-3 right-3 flex gap-2">
                                         <button
                                             onClick={() => {
                                                 setEditingProduct(product);
                                                 setEditPrice(product.pricePerKg);
                                                 setEditImage(product.image);
+                                                setEditSecondaryImage(product.secondaryImage || '');
                                             }}
                                             className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white text-gray-700 shadow-sm transition-all"
                                         >
@@ -690,6 +702,60 @@ export function AdminDashboard() {
                                         />
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
+
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {editSecondaryImage ? (
+                                            <>
+                                                <img src={editSecondaryImage} alt="Secondary Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No secondary image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setEditSecondaryImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="mt-3">
+                                        <p className="text-xs text-center text-gray-500">
+                                            OR paste URL below
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={editSecondaryImage}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEditSecondaryImage(e.target.value)}
+                                            placeholder="https://example.com/secondary-image.jpg"
+                                            className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="mt-8 flex gap-3 justify-end">
@@ -827,6 +893,58 @@ export function AdminDashboard() {
                                             value={newImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setNewImage(e.target.value)}
                                             placeholder="https://example.com/image.jpg"
+                                            className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
+                                    
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {newSecondaryImage ? (
+                                            <>
+                                                <img src={newSecondaryImage} alt="Secondary Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No secondary image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setNewSecondaryImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="mt-3">
+                                        <p className="text-xs text-center text-gray-500">OR paste URL</p>
+                                        <input
+                                            type="text"
+                                            value={newSecondaryImage}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewSecondaryImage(e.target.value)}
+                                            placeholder="https://example.com/secondary-image.jpg"
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
                                     </div>
