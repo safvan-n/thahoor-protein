@@ -781,14 +781,55 @@ export function AdminDashboard() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Image Link</label>
-                                    <input
-                                        type="text"
-                                        value={newImage}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewImage(e.target.value)}
-                                        placeholder="https://example.com/image.jpg"
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                                    />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                                    
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {newImage ? (
+                                            <>
+                                                <img src={newImage} alt="Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setNewImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="mt-3">
+                                        <p className="text-xs text-center text-gray-500">OR paste URL</p>
+                                        <input
+                                            type="text"
+                                            value={newImage}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewImage(e.target.value)}
+                                            placeholder="https://example.com/image.jpg"
+                                            className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
