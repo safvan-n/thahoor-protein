@@ -1,40 +1,23 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
 
 export function AdminLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = async (e: FormEvent) => {
+    const handleLogin = (e: FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
 
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const tokenResult = await userCredential.user.getIdTokenResult(true);
-            
-            // Allow fallback check with environment variable if needed during development
-            const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-            
-            if (tokenResult.claims.admin === true || userCredential.user.email === adminEmail) {
-                navigate('/admin/dashboard');
-            } else {
-                await auth.signOut();
-                setError('You do not have administrative privileges.');
-            }
-        } catch (err: any) {
-            console.error('Admin login failed:', err);
-            setError('Invalid admin credentials. Please try again.');
-        } finally {
-            setLoading(false);
+        // Hardcoded credentials as requested
+        if (email === 'admin' && password === 'thahoor@123') {
+            localStorage.setItem('isAdmin', 'true');
+            navigate('/admin/dashboard');
+        } else {
+            setError('Invalid credentials');
         }
     };
 
@@ -61,13 +44,13 @@ export function AdminLogin() {
 
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                         <input
-                            type="email"
+                            type="text"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                            placeholder="admin@example.com"
+                            placeholder="Enter username"
                         />
                     </div>
                     <div>
@@ -82,10 +65,9 @@ export function AdminLogin() {
                     </div>
                     <button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-lg shadow-primary/30 flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-lg shadow-primary/30 flex items-center justify-center"
                     >
-                        {loading ? <Loader2 className="animate-spin" size={20} /> : 'Login'}
+                        Login
                     </button>
                 </form>
             </motion.div>

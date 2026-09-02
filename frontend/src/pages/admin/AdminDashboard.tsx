@@ -2,8 +2,6 @@
 import { useEffect, useState, useRef, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProductStore } from '../../store/productStore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
 import { useCategoryStore } from '../../store/categoryStore';
 import { 
     Trash2, 
@@ -20,8 +18,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Cut, type Category } from '../../types';
 import { db } from '../../lib/firebase';
-import { ImageUploader } from '../../components/admin/ImageUploader';
-import { uploadImageToStorage } from '../../utils/uploadImage';
 import { 
     collection, 
     onSnapshot, 
@@ -67,20 +63,16 @@ export function AdminDashboard() {
     const [catName, setCatName] = useState('');
     const [catDesc, setCatDesc] = useState('');
     const [catImage, setCatImage] = useState('');
-    const [catImageFile, setCatImageFile] = useState<File | null>(null);
 
     // Form states for editing
     const [editPrice, setEditPrice] = useState<number>(0);
     const [editImage, setEditImage] = useState<string>('');
-    const [editImageFile, setEditImageFile] = useState<File | null>(null);
     const [editSecondaryImage, setEditSecondaryImage] = useState<string>('');
-    const [editSecondaryImageFile, setEditSecondaryImageFile] = useState<File | null>(null);
 
     // Form states for editing category
     const [editCatName, setEditCatName] = useState('');
     const [editCatDesc, setEditCatDesc] = useState('');
     const [editCatImage, setEditCatImage] = useState('');
-    const [editCatImageFile, setEditCatImageFile] = useState<File | null>(null);
 
     // Form states for adding product
     const [newName, setNewName] = useState('');
@@ -88,11 +80,7 @@ export function AdminDashboard() {
     const [newCategory, setNewCategory] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newImage, setNewImage] = useState('');
-    const [newImageFile, setNewImageFile] = useState<File | null>(null);
     const [newSecondaryImage, setNewSecondaryImage] = useState('');
-    const [newSecondaryImageFile, setNewSecondaryImageFile] = useState<File | null>(null);
-
-    const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories'>('products');
     const [orders, setOrders] = useState<any[]>([]);
@@ -144,43 +132,12 @@ export function AdminDashboard() {
     }, []);
 
     useEffect(() => {
-        const checkAdmin = async () => {
-            const user = auth.currentUser;
-            if (!user) {
-                navigate('/admin');
-                return;
-            }
-            
-            try {
-                // Force token refresh to ensure we have the latest claims
-                const tokenResult = await user.getIdTokenResult(true);
-                
-                // Also check environment variable for local testing fallback (optional but keeping for safety during dev)
-                const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-                
-                if (tokenResult.claims.admin !== true && user.email !== adminEmail) {
-                    navigate('/admin');
-                }
-            } catch (error) {
-                console.error("Error checking admin claims", error);
-                navigate('/admin');
-            }
-        };
-
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                navigate('/admin');
-            } else {
-                checkAdmin();
-            }
-        });
-        return () => unsubscribe();
+        const isAdmin = localStorage.getItem('isAdmin');
+        if (!isAdmin) {
+            navigate('/admin');
+            return;
+        }
     }, [navigate]);
-
-    const handleLogout = async () => {
-        await auth.signOut();
-        navigate('/admin');
-    };
 
     useEffect(() => {
         if (activeTab === 'products' || activeTab === 'categories') {
@@ -191,12 +148,14 @@ export function AdminDashboard() {
 
     useEffect(() => {
         if (categories.length > 0 && !newCategory) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setNewCategory(categories[0].id);
         }
     }, [categories, newCategory]);
 
-
+    const handleLogout = () => {
+        localStorage.removeItem('isAdmin');
+        navigate('/admin');
+    };
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         try {
@@ -261,81 +220,42 @@ export function AdminDashboard() {
         window.open(`https://wa.me/?text=${text}`, '_blank');
     };
 
-    const saveProduct = async () => {
+    const saveProduct = () => {
         if (editingProduct) {
-            setIsUploadingImage(true);
-            try {
-                let imageUrl = editImage;
-                if (editImageFile) {
-                    imageUrl = await uploadImageToStorage(editImageFile, 'products', editingProduct.id);
-                }
-                
-                let secondaryImageUrl = editSecondaryImage;
-                if (editSecondaryImageFile) {
-                    secondaryImageUrl = await uploadImageToStorage(editSecondaryImageFile, 'products', `${editingProduct.id}_secondary`);
-                }
-                
-                await updateProduct(editingProduct.id, {
-                    pricePerKg: editPrice,
-                    image: imageUrl,
-                    secondaryImage: secondaryImageUrl
-                });
-                setEditingProduct(null);
-                setEditImageFile(null);
-                setEditSecondaryImageFile(null);
-            } catch (error) {
-                alert("Failed to update product");
-            } finally {
-                setIsUploadingImage(false);
-            }
+            updateProduct(editingProduct.id, {
+                pricePerKg: editPrice,
+                image: editImage,
+                secondaryImage: editSecondaryImage
+            });
+            setEditingProduct(null);
+            setEditSecondaryImage('');
         }
     };
 
 
-    const handleAddProduct = async () => {
-        if (!newName || !newPrice || (!newImage && !newImageFile)) {
-            alert("Please fill all fields and select an image");
+    const handleAddProduct = () => {
+        if (!newName || !newPrice || !newImage) {
+            alert("Please fill all fields");
             return;
         }
 
-        setIsUploadingImage(true);
-        try {
-            const productId = Date.now().toString();
-            let imageUrl = newImage;
-            
-            if (newImageFile) {
-                imageUrl = await uploadImageToStorage(newImageFile, 'products', productId);
-            }
+        addProduct({
+            id: Date.now().toString(),
+            name: newName,
+            pricePerKg: newPrice,
+            categoryId: newCategory,
+            description: newDescription,
+            image: newImage,
+            secondaryImage: newSecondaryImage
+        });
 
-            let secondaryImageUrl = newSecondaryImage;
-            if (newSecondaryImageFile) {
-                secondaryImageUrl = await uploadImageToStorage(newSecondaryImageFile, 'products', `${productId}_secondary`);
-            }
-
-            await addProduct({
-                id: productId,
-                name: newName,
-                pricePerKg: newPrice,
-                categoryId: newCategory,
-                description: newDescription,
-                image: imageUrl,
-                secondaryImage: secondaryImageUrl
-            });
-
-            setIsAddingProduct(false);
-            // Reset form
-            setNewName('');
-            setNewPrice(0);
-            setNewDescription('');
-            setNewImage('');
-            setNewImageFile(null);
-            setNewSecondaryImage('');
-            setNewSecondaryImageFile(null);
-        } catch (error) {
-            alert("Failed to add product");
-        } finally {
-            setIsUploadingImage(false);
-        }
+        setIsAddingProduct(false);
+        // Reset form
+        setNewName('');
+        setNewPrice(0);
+        setNewDescription('');
+        setNewImage('');
+        setNewSecondaryImage('');
     };
 
     const handleDeleteProduct = (id: string) => {
@@ -345,59 +265,32 @@ export function AdminDashboard() {
     };
 
     const handleAddCategory = async () => {
-        if (!catName || (!catImage && !catImageFile)) {
+        if (!catName || !catImage) {
             alert("Please fill name and image");
             return;
         }
 
-        setIsUploadingImage(true);
-        try {
-            const categoryId = Date.now().toString();
-            let imageUrl = catImage;
-            
-            if (catImageFile) {
-                imageUrl = await uploadImageToStorage(catImageFile, 'categories', categoryId);
-            }
+        await addCategory({
+            id: Date.now().toString(),
+            name: catName,
+            description: catDesc,
+            image: catImage
+        });
 
-            await addCategory({
-                id: categoryId,
-                name: catName,
-                description: catDesc,
-                image: imageUrl
-            });
-
-            setIsAddingCategory(false);
-            setCatName('');
-            setCatDesc('');
-            setCatImage('');
-            setCatImageFile(null);
-        } catch(error) {
-            alert("Failed to add category");
-        } finally {
-            setIsUploadingImage(false);
-        }
+        setIsAddingCategory(false);
+        setCatName('');
+        setCatDesc('');
+        setCatImage('');
     };
 
-    const saveCategory = async () => {
+    const saveCategory = () => {
         if (editingCategory) {
-            setIsUploadingImage(true);
-            try {
-                let imageUrl = editCatImage;
-                if (editCatImageFile) {
-                    imageUrl = await uploadImageToStorage(editCatImageFile, 'categories', editingCategory.id);
-                }
-                await updateCategory(editingCategory.id, {
-                    name: editCatName,
-                    description: editCatDesc,
-                    image: imageUrl
-                });
-                setEditingCategory(null);
-                setEditCatImageFile(null);
-            } catch(error) {
-                alert("Failed to update category");
-            } finally {
-                setIsUploadingImage(false);
-            }
+            updateCategory(editingCategory.id, {
+                name: editCatName,
+                description: editCatDesc,
+                image: editCatImage
+            });
+            setEditingCategory(null);
         }
     };
 
@@ -478,15 +371,8 @@ export function AdminDashboard() {
                                     🔔 Test Sound
                                 </button>
                                 <button
-                                    onClick={async () => {
-                                        const user = auth.currentUser;
-                                        if (!user) return;
-                                        const token = await user.getIdToken();
-                                        fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`, {
-                                            headers: {
-                                                'Authorization': `Bearer ${token}`
-                                            }
-                                        })
+                                    onClick={() => {
+                                        fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`)
                                             .then(res => res.json())
                                             .then(data => setOrders(data));
                                     }}
@@ -514,6 +400,11 @@ export function AdminDashboard() {
                                         alt={product.name}
                                         className="w-full h-full object-cover"
                                     />
+                                    {product.secondaryImage && (
+                                        <div className="absolute bottom-2 left-2 w-10 h-10 rounded-lg overflow-hidden border-2 border-white shadow-md bg-white">
+                                            <img src={product.secondaryImage} alt="Secondary" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
                                     <div className="absolute top-3 right-3 flex gap-2">
                                         <button
                                             onClick={() => {
@@ -760,12 +651,44 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
-                                    <ImageUploader
-                                        currentImage={editImage}
-                                        onFileSelect={setEditImageFile}
-                                        isUploading={isUploadingImage}
-                                    />
-                                    
+
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-48 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {editImage ? (
+                                            <>
+                                                <img src={editImage} alt="Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload New Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setEditImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">
                                             OR paste an image URL below
@@ -773,10 +696,7 @@ export function AdminDashboard() {
                                         <input
                                             type="text"
                                             value={editImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                setEditImage(e.target.value);
-                                                setEditImageFile(null);
-                                            }}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEditImage(e.target.value)}
                                             placeholder="https://example.com/image.jpg"
                                             className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
                                         />
@@ -785,24 +705,53 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
-                                    <ImageUploader
-                                        currentImage={editSecondaryImage}
-                                        onFileSelect={setEditSecondaryImageFile}
-                                        isUploading={isUploadingImage}
-                                    />
-                                    
+
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {editSecondaryImage ? (
+                                            <>
+                                                <img src={editSecondaryImage} alt="Secondary Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No secondary image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setEditSecondaryImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">
-                                            OR paste an image URL below
+                                            OR paste URL below
                                         </p>
                                         <input
                                             type="text"
                                             value={editSecondaryImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                setEditSecondaryImage(e.target.value);
-                                                setEditSecondaryImageFile(null);
-                                            }}
-                                            placeholder="https://example.com/secondary.jpg"
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEditSecondaryImage(e.target.value)}
+                                            placeholder="https://example.com/secondary-image.jpg"
                                             className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
                                         />
                                     </div>
@@ -899,50 +848,104 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
-                                    <ImageUploader
-                                        currentImage={newImage}
-                                        onFileSelect={setNewImageFile}
-                                        isUploading={isUploadingImage}
-                                    />
                                     
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {newImage ? (
+                                            <>
+                                                <img src={newImage} alt="Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setNewImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
                                     <div className="mt-3">
-                                        <p className="text-xs text-center text-gray-500">
-                                            OR paste an image URL below
-                                        </p>
+                                        <p className="text-xs text-center text-gray-500">OR paste URL</p>
                                         <input
                                             type="text"
                                             value={newImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                setNewImage(e.target.value);
-                                                setNewImageFile(null);
-                                            }}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewImage(e.target.value)}
                                             placeholder="https://example.com/image.jpg"
-                                            className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
+                                            className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
-                                    <ImageUploader
-                                        currentImage={newSecondaryImage}
-                                        onFileSelect={setNewSecondaryImageFile}
-                                        isUploading={isUploadingImage}
-                                    />
                                     
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {newSecondaryImage ? (
+                                            <>
+                                                <img src={newSecondaryImage} alt="Secondary Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No secondary image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setNewSecondaryImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
                                     <div className="mt-3">
-                                        <p className="text-xs text-center text-gray-500">
-                                            OR paste an image URL below
-                                        </p>
+                                        <p className="text-xs text-center text-gray-500">OR paste URL</p>
                                         <input
                                             type="text"
                                             value={newSecondaryImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                setNewSecondaryImage(e.target.value);
-                                                setNewSecondaryImageFile(null);
-                                            }}
-                                            placeholder="https://example.com/secondary.jpg"
-                                            className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewSecondaryImage(e.target.value)}
+                                            placeholder="https://example.com/secondary-image.jpg"
+                                            className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
                                     </div>
                                 </div>
@@ -1016,21 +1019,50 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category Image</label>
-                                    <ImageUploader
-                                        currentImage={catImage}
-                                        onFileSelect={setCatImageFile}
-                                        isUploading={isUploadingImage}
-                                    />
                                     
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {catImage ? (
+                                            <>
+                                                <img src={catImage} alt="Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setCatImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">OR paste URL</p>
                                         <input
                                             type="text"
                                             value={catImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                setCatImage(e.target.value);
-                                                setCatImageFile(null);
-                                            }}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setCatImage(e.target.value)}
                                             placeholder="https://example.com/cat.jpg"
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
@@ -1105,21 +1137,50 @@ export function AdminDashboard() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category Image</label>
-                                    <ImageUploader
-                                        currentImage={editCatImage}
-                                        onFileSelect={setEditCatImageFile}
-                                        isUploading={isUploadingImage}
-                                    />
                                     
+                                    {/* Image Preview */}
+                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                        {editCatImage ? (
+                                            <>
+                                                <img src={editCatImage} alt="Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-medium">Click "Upload" to change</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-400">No image</p>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Button */}
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                                            <Upload size={18} className="text-gray-600" />
+                                            <span className="text-gray-700 font-medium">Upload New Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setEditCatImage(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
                                     <div className="mt-3">
                                         <p className="text-xs text-center text-gray-500">OR paste URL</p>
                                         <input
                                             type="text"
                                             value={editCatImage}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                                setEditCatImage(e.target.value);
-                                                setEditCatImageFile(null);
-                                            }}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEditCatImage(e.target.value)}
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
                                     </div>
