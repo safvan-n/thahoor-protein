@@ -76,7 +76,7 @@ export const useProductStore = create<ProductState>()(
                 try {
                     const productsCol = collection(db, 'products');
                     // Ensure we don't have double IDs
-                    const { id, ...productData } = product;
+                    const { ...productData } = product;
                     const docRef = await addDoc(productsCol, {
                         ...productData,
                         createdAt: new Date().toISOString()

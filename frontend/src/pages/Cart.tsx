@@ -55,7 +55,7 @@ export function Cart() {
             const orderItems = items.map(i => `- ${i.name}: ${i.qtyKg}kg @ ₹${i.pricePerKg}/kg = ₹${i.qtyKg * i.pricePerKg}`).join('%0A');
             const totalText = `%0A*Total Estimate: ₹${totalPrice}*`;
 
-            let paymentText = `%0A*Payment Method:* ${details.paymentMethod}`;
+            const paymentText = `%0A*Payment Method:* ${details.paymentMethod}`;
 
             const userText = `%0A%0A*Customer:* ${user?.name || details.name}`;
 

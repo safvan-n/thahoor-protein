@@ -2,6 +2,8 @@
 import { useEffect, useState, useRef, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProductStore } from '../../store/productStore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 import { useCategoryStore } from '../../store/categoryStore';
 import { 
     Trash2, 
@@ -130,12 +132,23 @@ export function AdminDashboard() {
     }, []);
 
     useEffect(() => {
-        const isAdmin = localStorage.getItem('isAdmin');
-        if (!isAdmin) {
-            navigate('/admin');
-            return;
-        }
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                navigate('/admin');
+            } else {
+                const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+                if (adminEmail && user.email !== adminEmail) {
+                    navigate('/admin');
+                }
+            }
+        });
+        return () => unsubscribe();
     }, [navigate]);
+
+    const handleLogout = async () => {
+        await auth.signOut();
+        navigate('/admin');
+    };
 
     useEffect(() => {
         if (activeTab === 'products' || activeTab === 'categories') {
@@ -146,14 +159,12 @@ export function AdminDashboard() {
 
     useEffect(() => {
         if (categories.length > 0 && !newCategory) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setNewCategory(categories[0].id);
         }
     }, [categories, newCategory]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('isAdmin');
-        navigate('/admin');
-    };
+
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         try {
@@ -365,8 +376,15 @@ export function AdminDashboard() {
                                     🔔 Test Sound
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`)
+                                    onClick={async () => {
+                                        const user = auth.currentUser;
+                                        if (!user) return;
+                                        const token = await user.getIdToken();
+                                        fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`, {
+                                            headers: {
+                                                'Authorization': `Bearer ${token}`
+                                            }
+                                        })
                                             .then(res => res.json())
                                             .then(data => setOrders(data));
                                     }}

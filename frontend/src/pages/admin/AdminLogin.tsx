@@ -1,23 +1,30 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 
 export function AdminLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = (e: FormEvent) => {
+    const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
 
-        // Hardcoded credentials as requested
-        if (email === 'admin' && password === 'thahoor@123') {
-            localStorage.setItem('isAdmin', 'true');
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
             navigate('/admin/dashboard');
-        } else {
-            setError('Invalid credentials');
+        } catch (err: any) {
+            console.error('Admin login failed:', err);
+            setError('Invalid admin credentials. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -44,13 +51,13 @@ export function AdminLogin() {
 
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                         <input
-                            type="text"
+                            type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                            placeholder="Enter username"
+                            placeholder="admin@example.com"
                         />
                     </div>
                     <div>
@@ -65,9 +72,10 @@ export function AdminLogin() {
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-lg shadow-primary/30 flex items-center justify-center"
+                        disabled={loading}
+                        className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-lg shadow-primary/30 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                        Login
+                        {loading ? <Loader2 className="animate-spin" size={20} /> : 'Login'}
                     </button>
                 </form>
             </motion.div>

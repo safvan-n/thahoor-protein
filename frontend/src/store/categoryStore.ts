@@ -46,7 +46,8 @@ export const useCategoryStore = create<CategoryState>()(
             addCategory: async (category) => {
                 try {
                     const categoriesCol = collection(db, 'categories');
-                    const { id, ...categoryData } = category;
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { id: _, ...categoryData } = category;
                     const docRef = await addDoc(categoriesCol, categoryData);
                     
                     const newCategory = { ...category, id: docRef.id };

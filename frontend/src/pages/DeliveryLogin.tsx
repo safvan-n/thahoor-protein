@@ -54,7 +54,6 @@ export function DeliveryLogin() {
                 }
             }
             
-            localStorage.setItem('isDriver', 'true');
             navigate('/delivery');
         } catch (err: any) {
             console.error('Auth failed:', err);
@@ -87,7 +86,6 @@ export function DeliveryLogin() {
                 }, { merge: true });
             }
 
-            localStorage.setItem('isDriver', 'true');
             navigate('/delivery');
         } catch (err: any) {
             console.error('Google login failed:', err);

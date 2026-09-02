@@ -27,12 +27,6 @@ export function DeliveryDashboard() {
 
     useEffect(() => {
         const authUnsubscribe = onAuthStateChanged(auth, async (user) => {
-            const isDriver = localStorage.getItem('isDriver');
-            if (!isDriver) {
-                navigate('/delivery/login');
-                return;
-            }
-
             if (user) {
                 const dEmail = user.email || '';
                 const dName = user.displayName || 'Fleet Pilot';
@@ -110,7 +104,7 @@ export function DeliveryDashboard() {
     };
 
     const handleRejectTask = async (orderId: string) => {
-        if (!confirm("Are you sure you want to REJECT this task? It will be sent back to the admin for re-assignment.")) return;
+        if (!window.confirm("Are you sure you want to REJECT this task? It will be sent back to the admin for re-assignment.")) return;
         
         try {
             await updateDoc(doc(db, 'orders', orderId), {
@@ -128,7 +122,6 @@ export function DeliveryDashboard() {
         if (driverInfo?.email) {
             await setDoc(doc(db, 'drivers', driverInfo.email.toLowerCase()), { status: 'offline' }, { merge: true });
         }
-        localStorage.removeItem('isDriver');
         await auth.signOut();
         navigate('/delivery/login');
     };

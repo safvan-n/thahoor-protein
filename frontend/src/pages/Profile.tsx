@@ -1,4 +1,5 @@
 import { useUserStore } from '../store/userStore';
+import { auth } from '../lib/firebase';
 import { Package, Truck, CheckCircle, Clock, User, LogOut, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -30,8 +31,15 @@ export function Profile() {
         if (!window.confirm("Are you sure you want to delete this order from your history?")) return;
 
         try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) return;
+            const token = await currentUser.getIdToken();
+
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/${orderId}?role=user`, {
                 method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (response.ok) {
@@ -162,6 +170,7 @@ export function Profile() {
                                                 <div className="space-y-4">
                                                     <p className="text-xs text-gray-500 flex items-center gap-2">
                                                         <Clock size={14} />
+                                                        {/* eslint-disable-next-line react-hooks/purity */}
                                                         Archived on {new Date(order.createdAt || (order as any).date || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </p>
                                                     <div className="grid grid-cols-1 gap-2">

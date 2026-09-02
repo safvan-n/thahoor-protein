@@ -1,11 +1,12 @@
 import express from 'express';
 import { adminDb } from '../lib/firebase-admin';
 import { io } from '../index';
+import { verifyToken, verifyAdmin } from '../middleware/auth';
 
 const router = express.Router();
 const ordersCol = adminDb.collection('orders');
 
-// Place Order
+// Place Order (Optional auth, but keeping open for public e-commerce standard, or we can use verifyToken)
 router.post('/', async (req, res) => {
     try {
         const orderData = req.body;
@@ -34,7 +35,11 @@ router.post('/', async (req, res) => {
 });
 
 // Get User Orders
-router.get('/user/:email', async (req, res) => {
+router.get('/user/:email', verifyToken, async (req: any, res) => {
+    // Basic authorization check
+    if (req.user.email !== req.params.email) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
     try {
         const snapshot = await ordersCol
             .where('customer.email', '==', req.params.email)
@@ -56,7 +61,7 @@ router.get('/user/:email', async (req, res) => {
 });
 
 // Admin: Get All Active Orders
-router.get('/admin', async (req, res) => {
+router.get('/admin', verifyAdmin, async (req, res) => {
     try {
         const snapshot = await ordersCol
             .where('isArchived', '!=', true)
@@ -78,12 +83,12 @@ router.get('/admin', async (req, res) => {
 });
 
 // Admin: Update Status / Assign Delivery
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verifyAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, deliveryBoy } = req.body;
 
-        const orderRef = ordersCol.doc(id);
+        const orderRef = ordersCol.doc(id as string);
         const doc = await orderRef.get();
 
         if (!doc.exists) {
@@ -109,12 +114,12 @@ router.patch('/:id', async (req, res) => {
 });
 
 // Soft Delete Order (Archive)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyToken, async (req: any, res) => {
     try {
         const { id } = req.params;
         const role = req.query.role; // 'user' or 'admin'
         
-        const orderRef = ordersCol.doc(id);
+        const orderRef = ordersCol.doc(id as string);
         const doc = await orderRef.get();
 
         if (!doc.exists) {
