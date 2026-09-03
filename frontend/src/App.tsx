@@ -9,6 +9,7 @@ import { Cart } from './pages/Cart';
 import { Recipes } from './pages/Recipes';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminRoute } from './components/auth/AdminRoute';
 import { Profile } from './pages/Profile';
 import { Contact } from './pages/Contact';
 import { DeliveryDashboard } from './pages/DeliveryDashboard';
@@ -25,7 +26,14 @@ function App() {
     <Routes>
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route 
+        path="/admin/dashboard" 
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } 
+      />
 
       {/* Delivery Routes */}
       <Route path="/delivery" element={<DeliveryDashboard />} />

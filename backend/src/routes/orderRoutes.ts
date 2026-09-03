@@ -6,7 +6,7 @@ import { verifyToken, verifyAdmin } from '../middleware/auth';
 const router = express.Router();
 const ordersCol = adminDb.collection('orders');
 
-// Place Order (Optional auth, but keeping open for public e-commerce standard, or we can use verifyToken)
+// Place Order (Public e-commerce checkout)
 router.post('/', async (req, res) => {
     try {
         const orderData = req.body;
@@ -34,17 +34,16 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Get User Orders
+// Get User Orders (Authenticated user can only view their own orders)
 router.get('/user/:email', verifyToken, async (req: any, res) => {
-    // Basic authorization check
-    if (req.user.email !== req.params.email) {
+    if (req.user.email !== req.params.email && req.user.admin !== true) {
         return res.status(403).json({ message: 'Forbidden' });
     }
     try {
         const snapshot = await ordersCol
             .where('customer.email', '==', req.params.email)
             .where('isDeletedByUser', '!=', true)
-            .orderBy('isDeletedByUser') // Required for inequality filter
+            .orderBy('isDeletedByUser')
             .orderBy('createdAt', 'desc')
             .get();
 
@@ -61,7 +60,7 @@ router.get('/user/:email', verifyToken, async (req: any, res) => {
 });
 
 // Admin: Get All Active Orders
-router.get('/admin', verifyAdmin, async (req, res) => {
+router.get('/admin', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const snapshot = await ordersCol
             .where('isArchived', '!=', true)
@@ -83,7 +82,7 @@ router.get('/admin', verifyAdmin, async (req, res) => {
 });
 
 // Admin: Update Status / Assign Delivery
-router.patch('/:id', verifyAdmin, async (req, res) => {
+router.patch('/:id', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, deliveryBoy } = req.body;
@@ -119,11 +118,21 @@ router.delete('/:id', verifyToken, async (req: any, res) => {
         const { id } = req.params;
         const role = req.query.role; // 'user' or 'admin'
         
+        // If attempting admin archive, enforce admin verification
+        if (role === 'admin' && req.user.admin !== true && req.user.email !== process.env.ADMIN_EMAIL) {
+            return res.status(403).json({ message: 'Forbidden: Admin access required to archive orders' });
+        }
+
         const orderRef = ordersCol.doc(id as string);
         const doc = await orderRef.get();
 
         if (!doc.exists) {
             return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // If regular user, ensure they own the order
+        if (role === 'user' && doc.data()?.customer?.email !== req.user.email) {
+            return res.status(403).json({ message: 'Forbidden: You can only delete your own orders' });
         }
 
         const updates: any = {

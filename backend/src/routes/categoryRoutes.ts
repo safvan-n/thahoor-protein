@@ -1,10 +1,11 @@
 import express from 'express';
 import { adminDb } from '../lib/firebase-admin';
+import { verifyToken, verifyAdmin } from '../middleware/auth';
 
 const router = express.Router();
 const categoriesCol = adminDb.collection('categories');
 
-// Get all categories
+// Get all categories (Public)
 router.get('/', async (req, res) => {
     try {
         const snapshot = await categoriesCol.get();
@@ -19,8 +20,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Add new category
-router.post('/', async (req, res) => {
+// Add new category (Admin only)
+router.post('/', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { name, description, image } = req.body;
         
@@ -48,10 +49,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update category
-router.patch('/:id', async (req, res) => {
+// Update category (Admin only)
+router.patch('/:id', verifyToken, verifyAdmin, async (req, res) => {
     try {
-        const categoryRef = categoriesCol.doc(req.params.id);
+        const categoryRef = categoriesCol.doc(req.params.id as string);
         const doc = await categoryRef.get();
 
         if (!doc.exists) {
@@ -71,10 +72,10 @@ router.patch('/:id', async (req, res) => {
     }
 });
 
-// Delete category
-router.delete('/:id', async (req, res) => {
+// Delete category (Admin only)
+router.delete('/:id', verifyToken, verifyAdmin, async (req, res) => {
     try {
-        const categoryRef = categoriesCol.doc(req.params.id);
+        const categoryRef = categoriesCol.doc(req.params.id as string);
         const doc = await categoryRef.get();
 
         if (!doc.exists) {

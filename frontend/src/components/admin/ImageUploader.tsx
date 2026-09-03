@@ -1,5 +1,5 @@
-import React, { useState, useRef, ChangeEvent, DragEvent } from 'react';
-import { Upload, X, FileImage, Loader2 } from 'lucide-react';
+import { useState, useRef, type ChangeEvent, type DragEvent } from 'react';
+import { X, FileImage, Loader2 } from 'lucide-react';
 
 interface ImageUploaderProps {
     currentImage?: string;

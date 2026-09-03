@@ -1,28 +1,42 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read access to products and categories
+    // Helper function to check if the caller is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the caller has verified admin custom claim
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Public read for products; creation, modification and deletion restricted strictly to admin
     match /products/{productId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow create, update, delete: if isAdmin();
     }
     
+    // Public read for categories; creation, modification and deletion restricted strictly to admin
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow create, update, delete: if isAdmin();
     }
 
-    // Orders: Customers can create, and read/write their own. Admins can read/write all.
+    // Orders:
+    // - Authenticated users can place orders
+    // - Customers can read/update their own orders
+    // - Authorized Admins can read, update, and delete any orders
     match /orders/{orderId} {
-      // Validate customer orders to prevent overriding fields inappropriately
-      allow create: if request.auth != null;
-      allow read, update, delete: if request.auth != null && (request.auth.token.email == resource.data.customer.email || request.auth.token.admin == true);
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && (request.auth.token.email == resource.data.customer.email || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    // Drivers: Public read (for checkout assignment), write for admins
+    // Drivers: Public read for checkout/delivery assignment; write restricted to admins
     match /drivers/{driverId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isAdmin();
     }
 
     // Default: explicitly deny access to any unconfigured collections

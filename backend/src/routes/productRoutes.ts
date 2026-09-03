@@ -1,13 +1,14 @@
 import express from 'express';
 import { adminDb } from '../lib/firebase-admin';
 import { CUTS } from '../data/products';
+import { verifyToken, verifyAdmin } from '../middleware/auth';
 
 const router = express.Router();
 const productsCol = adminDb.collection('products');
 const categoriesCol = adminDb.collection('categories');
 
-// Seed Firestore (One-time trigger)
-router.get('/seed', async (req, res) => {
+// Seed Firestore (Restricted to Admin)
+router.get('/seed', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const categories = [
             { id: '1', name: 'Chicken', description: 'Fresh, farm-raised chicken', image: '/assets/categories/chicken.jpg' },
@@ -48,7 +49,7 @@ router.get('/seed', async (req, res) => {
     }
 });
 
-// Get all products
+// Get all products (Public catalog view)
 router.get('/', async (req, res) => {
     try {
         const snapshot = await productsCol.get();
@@ -63,8 +64,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Add new product
-router.post('/', async (req, res) => {
+// Add new product (Admin only)
+router.post('/', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const { name, pricePerKg, categoryId, image, description, isAvailable } = req.body;
         
@@ -98,10 +99,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update product
-router.patch('/:id', async (req, res) => {
+// Update product (Admin only)
+router.patch('/:id', verifyToken, verifyAdmin, async (req, res) => {
     try {
-        const productRef = productsCol.doc(req.params.id);
+        const productRef = productsCol.doc(req.params.id as string);
         const doc = await productRef.get();
 
         if (!doc.exists) {
@@ -121,10 +122,10 @@ router.patch('/:id', async (req, res) => {
     }
 });
 
-// Delete product
-router.delete('/:id', async (req, res) => {
+// Delete product (Admin only)
+router.delete('/:id', verifyToken, verifyAdmin, async (req, res) => {
     try {
-        const productRef = productsCol.doc(req.params.id);
+        const productRef = productsCol.doc(req.params.id as string);
         const doc = await productRef.get();
 
         if (!doc.exists) {

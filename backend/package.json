@@ -8,6 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "seed": "ts-node src/seed.ts",
+    "make-admin": "ts-node src/scripts/makeAdmin.ts",
+    "create-admin": "ts-node src/scripts/createAdmin.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

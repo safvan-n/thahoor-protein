@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Cut, type Category } from '../../types';
-import { db } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
+import { uploadImageToStorage } from '../../utils/uploadImage';
 import { 
     collection, 
     onSnapshot, 
@@ -63,6 +64,30 @@ export function AdminDashboard() {
     const [catName, setCatName] = useState('');
     const [catDesc, setCatDesc] = useState('');
     const [catImage, setCatImage] = useState('');
+    const [uploadingField, setUploadingField] = useState<string | null>(null);
+
+    const handleImageFileChange = async (
+        file: File, 
+        folder: string, 
+        id: string, 
+        setUrl: (url: string) => void,
+        fieldKey: string
+    ) => {
+        setUploadingField(fieldKey);
+        try {
+            const downloadUrl = await uploadImageToStorage(file, folder, id);
+            setUrl(downloadUrl);
+        } catch (err) {
+            console.warn('Storage upload failed, falling back to FileReader:', err);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        } finally {
+            setUploadingField(null);
+        }
+    };
 
     // Form states for editing
     const [editPrice, setEditPrice] = useState<number>(0);
@@ -132,14 +157,6 @@ export function AdminDashboard() {
     }, []);
 
     useEffect(() => {
-        const isAdmin = localStorage.getItem('isAdmin');
-        if (!isAdmin) {
-            navigate('/admin');
-            return;
-        }
-    }, [navigate]);
-
-    useEffect(() => {
         if (activeTab === 'products' || activeTab === 'categories') {
             fetchCategories();
             fetchProducts();
@@ -152,8 +169,12 @@ export function AdminDashboard() {
         }
     }, [categories, newCategory]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('isAdmin');
+    const handleLogout = async () => {
+        try {
+            await auth.signOut();
+        } catch (error) {
+            console.error('Error during admin sign out:', error);
+        }
         navigate('/admin');
     };
 
@@ -371,10 +392,19 @@ export function AdminDashboard() {
                                     🔔 Test Sound
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`)
-                                            .then(res => res.json())
-                                            .then(data => setOrders(data));
+                                    onClick={async () => {
+                                        try {
+                                            const token = await auth.currentUser?.getIdToken();
+                                            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/admin`, {
+                                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                                            });
+                                            if (res.ok) {
+                                                const data = await res.json();
+                                                setOrders(data);
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to refresh admin orders:', err);
+                                        }
                                     }}
                                     className="text-primary hover:bg-red-50 px-3 py-1 rounded-lg text-sm font-bold transition-colors"
                                 >
@@ -670,19 +700,17 @@ export function AdminDashboard() {
                                     <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
                                             <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload New Image</span>
+                                            <span className="text-gray-700 font-medium">
+                                                {uploadingField === 'editImage' ? 'Uploading...' : 'Upload New Image'}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
                                                 className="hidden"
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                                     const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setEditImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                    if (file && editingProduct) {
+                                                        handleImageFileChange(file, 'products', editingProduct.id, setEditImage, 'editImage');
                                                     }
                                                 }}
                                             />
@@ -724,19 +752,17 @@ export function AdminDashboard() {
                                     <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
                                             <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <span className="text-gray-700 font-medium">
+                                                {uploadingField === 'editSecondaryImage' ? 'Uploading...' : 'Upload Image'}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
                                                 className="hidden"
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                                     const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setEditSecondaryImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                    if (file && editingProduct) {
+                                                        handleImageFileChange(file, 'products', `${editingProduct.id}_sec`, setEditSecondaryImage, 'editSecondaryImage');
                                                     }
                                                 }}
                                             />
@@ -867,7 +893,9 @@ export function AdminDashboard() {
                                     <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
                                             <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <span className="text-gray-700 font-medium">
+                                                {uploadingField === 'newImage' ? 'Uploading...' : 'Upload Image'}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -875,11 +903,7 @@ export function AdminDashboard() {
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setNewImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                        handleImageFileChange(file, 'products', `prod_${Date.now()}`, setNewImage, 'newImage');
                                                     }
                                                 }}
                                             />
@@ -919,7 +943,9 @@ export function AdminDashboard() {
                                     <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
                                             <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <span className="text-gray-700 font-medium">
+                                                {uploadingField === 'newSecondaryImage' ? 'Uploading...' : 'Upload Image'}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -927,11 +953,7 @@ export function AdminDashboard() {
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setNewSecondaryImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                        handleImageFileChange(file, 'products', `prod_sec_${Date.now()}`, setNewSecondaryImage, 'newSecondaryImage');
                                                     }
                                                 }}
                                             />
@@ -1038,7 +1060,9 @@ export function AdminDashboard() {
                                     <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
                                             <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload Image</span>
+                                            <span className="text-gray-700 font-medium">
+                                                {uploadingField === 'catImage' ? 'Uploading...' : 'Upload Image'}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -1046,11 +1070,7 @@ export function AdminDashboard() {
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setCatImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                        handleImageFileChange(file, 'categories', `cat_${Date.now()}`, setCatImage, 'catImage');
                                                     }
                                                 }}
                                             />
@@ -1156,19 +1176,17 @@ export function AdminDashboard() {
                                     <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer bg-white border border-gray-300 rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
                                             <Upload size={18} className="text-gray-600" />
-                                            <span className="text-gray-700 font-medium">Upload New Image</span>
+                                            <span className="text-gray-700 font-medium">
+                                                {uploadingField === 'editCatImage' ? 'Uploading...' : 'Upload New Image'}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
                                                 className="hidden"
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                                     const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = () => {
-                                                            setEditCatImage(reader.result as string);
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                    if (file && editingCategory) {
+                                                        handleImageFileChange(file, 'categories', editingCategory.id, setEditCatImage, 'editCatImage');
                                                     }
                                                 }}
                                             />
