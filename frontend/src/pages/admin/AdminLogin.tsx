@@ -6,7 +6,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 
 export function AdminLogin() {
-    const [email, setEmail] = useState('');
+    const [userId, setUserId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -18,7 +18,11 @@ export function AdminLogin() {
         setLoading(true);
 
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+            let loginEmail = userId.trim();
+            if (loginEmail.toLowerCase() === 'thahoorprotein') {
+                loginEmail = 'admin@thahoorprotein.com';
+            }
+            const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
             
             // Force token refresh to fetch the latest custom claims
             const idTokenResult = await userCredential.user.getIdTokenResult(true);
@@ -34,11 +38,11 @@ export function AdminLogin() {
             console.error('Admin login error:', err);
             let message = 'Invalid admin credentials.';
             if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                message = 'Invalid email or password.';
+                message = 'Invalid User ID or password.';
             } else if (err.code === 'auth/too-many-requests') {
                 message = 'Too many failed login attempts. Please try again later.';
             } else if (err.code === 'auth/invalid-email') {
-                message = 'Please enter a valid email address.';
+                message = 'Please enter a valid User ID.';
             } else if (err.message) {
                 message = err.message;
             }
@@ -74,15 +78,15 @@ export function AdminLogin() {
 
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Admin Email or Username</label>
                         <div className="relative">
                             <input
-                                type="email"
+                                type="text"
                                 required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                value={userId}
+                                onChange={(e) => setUserId(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm"
-                                placeholder="admin@thahoorprotein.com"
+                                placeholder="thahoorprotein or admin@thahoorprotein.com"
                                 disabled={loading}
                             />
                             <Mail className="absolute left-3 top-3.5 text-gray-400" size={18} />

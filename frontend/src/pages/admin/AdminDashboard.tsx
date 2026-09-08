@@ -67,9 +67,9 @@ export function AdminDashboard() {
     const [uploadingField, setUploadingField] = useState<string | null>(null);
 
     const handleImageFileChange = async (
-        file: File, 
-        folder: string, 
-        id: string, 
+        file: File,
+        folder: 'products' | 'categories',
+        id: string,
         setUrl: (url: string) => void,
         fieldKey: string
     ) => {
@@ -77,13 +77,9 @@ export function AdminDashboard() {
         try {
             const downloadUrl = await uploadImageToStorage(file, folder, id);
             setUrl(downloadUrl);
-        } catch (err) {
-            console.warn('Storage upload failed, falling back to FileReader:', err);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        } catch (err: any) {
+            console.error('Image upload failed:', err);
+            alert(err.message || 'Image upload failed. Please check file type (JPG/PNG/WebP, max 5MB) and ensure you are logged in as admin.');
         } finally {
             setUploadingField(null);
         }

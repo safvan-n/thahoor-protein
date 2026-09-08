@@ -2,23 +2,56 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import { compressImage } from './imageCompression';
 
-export const uploadImageToStorage = async (file: File, folder: string, id: string): Promise<string> => {
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit matching storage.rules
+
+export const uploadImageToStorage = async (
+    file: File,
+    folder: 'products' | 'categories',
+    id: string
+): Promise<string> => {
+    // 1. Validate file existence
+    if (!file) {
+        throw new Error('No file provided for upload.');
+    }
+
+    // 2. Validate MIME type
+    if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+        throw new Error(
+            `Invalid file type (${file.type || 'unknown'}). Only JPG, PNG, and WebP images are allowed.`
+        );
+    }
+
+    // 3. Validate file size (max 5MB)
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        throw new Error(`File size (${sizeMb}MB) exceeds the maximum allowed limit of 5MB.`);
+    }
+
     try {
-        // Compress the image before upload
-        const compressedFile = await compressImage(file, 800, 800, 0.8);
-        
-        // Ensure a safe file name (e.g. image.jpg)
-        const ext = file.name.split('.').pop() || 'jpg';
-        const safeName = `image_${Date.now()}.${ext}`;
-        
-        const storageRef = ref(storage, `${folder}/${id}/${safeName}`);
-        
-        await uploadBytes(storageRef, compressedFile);
-        const downloadUrl = await getDownloadURL(storageRef);
-        
+        // 4. Compress image before uploading
+        const compressedFile = await compressImage(file, 800, 800, 0.85);
+
+        // 5. Generate collision-resistant safe filename
+        const rawExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const safeExt = ['jpeg', 'png', 'webp'].includes(rawExt) ? rawExt : 'jpg';
+        const randomSuffix = Math.random().toString(36).substring(2, 9);
+        const safeName = `img_${Date.now()}_${randomSuffix}.${safeExt}`;
+
+        // 6. Upload to Firebase Storage
+        const cleanId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const storageRef = ref(storage, `${folder}/${cleanId}/${safeName}`);
+
+        const uploadResult = await uploadBytes(storageRef, compressedFile, {
+            contentType: compressedFile.type || 'image/jpeg',
+            cacheControl: 'public, max-age=31536000',
+        });
+
+        // 7. Get and return download URL
+        const downloadUrl = await getDownloadURL(uploadResult.ref);
         return downloadUrl;
-    } catch (error) {
-        console.error('Error uploading image:', error);
-        throw error;
+    } catch (error: any) {
+        console.error('Secure image upload failed:', error);
+        throw new Error(error.message || 'Image upload failed. Please verify admin permissions and network connection.');
     }
 };
