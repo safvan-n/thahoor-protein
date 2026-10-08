@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
@@ -17,7 +17,11 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Analytics is unavailable in some browser environments (for example, private
+// browsing). Do not let that optional feature prevent the app from loading.
+const analytics = typeof window !== 'undefined'
+  ? isSupported().then((supported) => supported ? getAnalytics(app) : null)
+  : Promise.resolve(null);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
