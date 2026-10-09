@@ -163,11 +163,12 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">+91</span>
                                                     <input
                                                         type="tel"
+                                                        inputMode="tel"
                                                         value={phone}
                                                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900 font-medium"
                                                         placeholder="98765 43210"
-                                                        autoComplete="off"
+                                                        autoComplete="tel"
                                                     />
                                                 </div>
                                             </div>
@@ -188,7 +189,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                 type="button"
                                                 onClick={getCurrentLocation}
                                                 disabled={loadingLocation}
-                                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold transition-colors border border-blue-200 shadow-sm"
+                                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold transition-colors border border-blue-200 shadow-sm active:scale-98"
                                             >
                                                 {loadingLocation ? (
                                                     <>
@@ -198,16 +199,16 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                 ) : (
                                                     <>
                                                         <MapPin size={18} />
-                                                        Use Exact GPS Location
+                                                        {location ? '📍 GPS Attached (Tap to re-detect)' : 'Use Exact GPS Location'}
                                                     </>
                                                 )}
                                             </button>
                                         </div>
 
                                         {location && (
-                                            <div className="bg-green-50 border border-green-100 p-3 rounded-xl flex items-center gap-3 text-green-700 text-sm">
-                                                <CheckCircle2 size={18} className="shrink-0" />
-                                                <span className="font-medium">GPS Location attached successfully</span>
+                                            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center gap-3 text-emerald-800 text-xs font-semibold">
+                                                <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+                                                <span>GPS Location attached successfully</span>
                                             </div>
                                         )}
 
@@ -219,11 +220,11 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     value={address.street}
                                                     onChange={(e) => setAddress({ ...address, street: e.target.value })}
                                                     className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
-                                                    placeholder="House No, Apartment Name"
-                                                    autoComplete="off"
+                                                    placeholder="House No, Apartment Name, Road"
+                                                    autoComplete="street-address"
                                                 />
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div>
                                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">City</label>
                                                     <input
@@ -231,19 +232,20 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                         value={address.city}
                                                         onChange={(e) => setAddress({ ...address, city: e.target.value })}
                                                         className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
-                                                        placeholder="Your City"
-                                                        autoComplete="off"
+                                                        placeholder="Kayamkulam"
+                                                        autoComplete="address-level2"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Pincode</label>
                                                     <input
                                                         type="text"
+                                                        inputMode="numeric"
                                                         value={address.pincode}
-                                                        onChange={(e) => setAddress({ ...address, pincode: e.target.value.slice(0, 6) })}
+                                                        onChange={(e) => setAddress({ ...address, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                                                         className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
-                                                        placeholder="000000"
-                                                        autoComplete="off"
+                                                        placeholder="690502"
+                                                        autoComplete="postal-code"
                                                     />
                                                 </div>
                                             </div>

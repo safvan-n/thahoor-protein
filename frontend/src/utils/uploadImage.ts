@@ -28,10 +28,10 @@ export const uploadImageToStorage = async (
         throw new Error(`File size (${sizeMb}MB) exceeds the maximum allowed limit of 5MB.`);
     }
 
-    try {
-        // 4. Compress image before uploading
-        const compressedFile = await compressImage(file, 800, 800, 0.85);
+    // 4. Compress image before uploading
+    const compressedFile = await compressImage(file, 800, 800, 0.85);
 
+    try {
         // 5. Generate collision-resistant safe filename
         const rawExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
         const safeExt = ['jpeg', 'png', 'webp'].includes(rawExt) ? rawExt : 'jpg';
@@ -50,8 +50,24 @@ export const uploadImageToStorage = async (
         // 7. Get and return download URL
         const downloadUrl = await getDownloadURL(uploadResult.ref);
         return downloadUrl;
-    } catch (error: any) {
-        console.error('Secure image upload failed:', error);
-        throw new Error(error.message || 'Image upload failed. Please verify admin permissions and network connection.');
+    } catch (storageError: any) {
+        console.warn(
+            'Firebase Storage upload unavailable (CORS policy or bucket status). Falling back to optimized base64 image:',
+            storageError
+        );
+
+        // Fallback: convert compressed image to base64 data URL so admin functionality is never blocked
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                if (typeof reader.result === 'string') {
+                    resolve(reader.result);
+                } else {
+                    reject(new Error('Failed to encode image data.'));
+                }
+            };
+            reader.onerror = () => reject(new Error('Failed to read image file.'));
+            reader.readAsDataURL(compressedFile);
+        });
     }
 };

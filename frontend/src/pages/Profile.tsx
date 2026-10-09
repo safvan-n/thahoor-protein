@@ -63,24 +63,24 @@ export function Profile() {
     }
 
     return (
-        <div className="container py-12 md:py-24">
-            <div className="max-w-6xl mx-auto">
+        <div className="min-h-screen bg-[#fcfbfa] py-6 sm:py-12 md:py-20 pb-32">
+            <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
                 <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col md:flex-row items-end justify-between gap-6 mb-12 border-b border-gray-100 pb-12"
+                    className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8 sm:mb-12 border-b border-gray-100 pb-6 sm:pb-8"
                 >
-                    <div className="text-center md:text-left">
-                        <span className="text-primary font-bold uppercase tracking-[0.4em] text-[10px] mb-4 block">Patron's Lounge</span>
-                        <h1 className="text-4xl md:text-6xl font-serif font-black text-gray-900 tracking-tighter">Your Account</h1>
+                    <div>
+                        <span className="text-primary font-bold uppercase tracking-[0.3em] text-[10px] mb-2 block">Customer Lounge</span>
+                        <h1 className="text-3xl sm:text-5xl font-serif font-black text-gray-900 tracking-tight">Your Account</h1>
                     </div>
                     
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 text-gray-400 hover:text-red-600 font-bold uppercase tracking-widest text-[10px] transition-all group"
+                        className="flex items-center gap-2 text-gray-500 hover:text-red-600 font-bold uppercase tracking-wider text-xs transition-all group py-2"
                     >
                         <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
-                        Log Out From Archive
+                        <span>Log Out</span>
                     </button>
                 </motion.div>
 

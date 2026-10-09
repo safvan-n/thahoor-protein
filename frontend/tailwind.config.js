@@ -8,12 +8,25 @@ export default {
         extend: {
             colors: {
                 primary: {
-                    DEFAULT: "#b91c1c", // Red 700 - Butchery Red
+                    DEFAULT: "#b91c1c", // Red 700 - Brand Crimson
+                    light: "#dc2626",
+                    dark: "#991b1b",
+                    50: "#fef2f2",
+                    100: "#fee2e2",
                     foreground: "#ffffff"
                 },
                 secondary: {
-                    DEFAULT: "#f97316", // Orange 500 - Hero Background
+                    DEFAULT: "#ea580c", // Brand Amber / Orange
+                    light: "#f97316",
+                    dark: "#c2410c",
                     foreground: "#ffffff"
+                },
+                brand: {
+                    red: "#b91c1c",
+                    darkRed: "#7f1d1d",
+                    gold: "#d97706",
+                    dark: "#121214",
+                    cream: "#fcfbfa"
                 },
                 background: "#ffffff",
                 foreground: "#1c1917", // Stone 900
@@ -21,8 +34,9 @@ export default {
                 border: "#e7e5e4", // Stone 200
             },
             fontFamily: {
-                sans: ['Inter', 'sans-serif'],
+                sans: ['Outfit', 'Inter', 'sans-serif'],
                 display: ['Playfair Display', 'serif'],
+                serif: ['Playfair Display', 'serif'],
             }
         },
     },

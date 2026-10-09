@@ -141,7 +141,9 @@ export function AdminDashboard() {
             });
 
             if (hasNewOrder) {
-                audioRef.current?.play().catch((e: any) => console.log('Audio play failed:', e));
+                audioRef.current?.play().catch(() => {
+                    // Browser requires user interaction before autoplaying audio
+                });
             }
 
             setOrders(orderList);
