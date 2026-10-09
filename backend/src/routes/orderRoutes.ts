@@ -116,7 +116,11 @@ router.patch('/:id', verifyToken, verifyAdmin, async (req, res) => {
 router.delete('/:id', verifyToken, async (req: any, res) => {
     try {
         const { id } = req.params;
-        const role = req.query.role; // 'user' or 'admin'
+        const role = req.query.role;
+
+        if (role !== 'user' && role !== 'admin') {
+            return res.status(400).json({ message: 'A valid role (user or admin) is required' });
+        }
         
         // If attempting admin archive, enforce admin verification
         if (role === 'admin' && req.user.admin !== true && req.user.email !== process.env.ADMIN_EMAIL) {

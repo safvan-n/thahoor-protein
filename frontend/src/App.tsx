@@ -44,7 +44,6 @@ function App() {
       <Route path="/shop" element={<Layout><Shop /></Layout>} />
       <Route path="/recipes" element={<Layout><Recipes /></Layout>} />
       <Route path="/cart" element={<Layout><Cart /></Layout>} />
-      <Route path="/cart" element={<Layout><Cart /></Layout>} />
       <Route path="/profile" element={<Layout><Profile /></Layout>} />
       <Route path="/contact" element={<Layout><Contact /></Layout>} />
     </Routes>
