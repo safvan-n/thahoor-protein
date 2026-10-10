@@ -39,6 +39,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Delivery Zones: Public read for checkout validation; write restricted to admins
+    match /deliveryZones/{zoneId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Default: explicitly deny access to any unconfigured collections
     match /{document=**} {
       allow read, write: if false;

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProductStore } from '../../store/productStore';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useDeliveryZoneStore } from '../../store/deliveryZoneStore';
 import { 
     Trash2, 
     Edit, 
@@ -14,10 +15,11 @@ import {
     TrendingUp, 
     User,
     LayoutGrid,
-    Loader2
+    Loader2,
+    MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type Cut, type Category } from '../../types';
+import { type Cut, type Category, type DeliveryZone } from '../../types';
 import { db, auth } from '../../lib/firebase';
 import { uploadImageToStorage } from '../../utils/uploadImage';
 import { 
@@ -35,6 +37,14 @@ export function AdminDashboard() {
     const navigate = useNavigate();
     const { products, updateProduct, addProduct, deleteProduct, fetchProducts } = useProductStore();
     const { categories, addCategory, updateCategory, deleteCategory, fetchCategories } = useCategoryStore();
+    const { 
+        zones, 
+        fetchZones: fetchDeliveryZones, 
+        addZone, 
+        updateZone, 
+        toggleZone, 
+        deleteZone 
+    } = useDeliveryZoneStore();
     
     const [editingProduct, setEditingProduct] = useState<Cut | null>(null);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -45,6 +55,23 @@ export function AdminDashboard() {
     const [driverEmail, setDriverEmail] = useState('');
     const [driverName, setDriverName] = useState('');
     const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+
+    // Zone States
+    const [isAddingZone, setIsAddingZone] = useState(false);
+    const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
+
+    const [zoneName, setZoneName] = useState('');
+    const [zoneCity, setZoneCity] = useState('Kayamkulam');
+    const [zonePincodes, setZonePincodes] = useState('');
+    const [zoneFee, setZoneFee] = useState<number>(0);
+    const [zoneNote, setZoneNote] = useState('');
+
+    const [editZoneName, setEditZoneName] = useState('');
+    const [editZoneCity, setEditZoneCity] = useState('');
+    const [editZonePincodes, setEditZonePincodes] = useState('');
+    const [editZoneFee, setEditZoneFee] = useState<number>(0);
+    const [editZoneNote, setEditZoneNote] = useState('');
+    const [editZoneActive, setEditZoneActive] = useState(true);
 
     useEffect(() => {
         const driversCol = collection(db, 'drivers');
@@ -162,7 +189,7 @@ export function AdminDashboard() {
     const [newImage, setNewImage] = useState('');
     const [newSecondaryImage, setNewSecondaryImage] = useState('');
 
-    const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories' | 'locations'>('products');
     const [orders, setOrders] = useState<any[]>([]);
 
     // Notification Sound
@@ -217,8 +244,10 @@ export function AdminDashboard() {
         if (activeTab === 'products' || activeTab === 'categories') {
             fetchCategories();
             fetchProducts();
+        } else if (activeTab === 'locations') {
+            fetchDeliveryZones();
         }
-    }, [activeTab, fetchCategories, fetchProducts]);
+    }, [activeTab, fetchCategories, fetchProducts, fetchDeliveryZones]);
 
     useEffect(() => {
         if (categories.length > 0 && !newCategory) {
@@ -413,6 +442,70 @@ export function AdminDashboard() {
         }
     };
 
+    const handleAddZone = async () => {
+        if (!zoneName.trim() || !zoneCity.trim() || !zonePincodes.trim()) {
+            alert('Please fill Location Name, City, and at least one 6-digit Pincode');
+            return;
+        }
+
+        const pins = zonePincodes
+            .split(/[,;\s]+/)
+            .map(p => p.trim())
+            .filter(p => p.length === 6);
+
+        if (pins.length === 0) {
+            alert('Please enter valid 6-digit pincode(s) separated by comma (e.g. 690502)');
+            return;
+        }
+
+        await addZone({
+            name: zoneName.trim(),
+            city: zoneCity.trim(),
+            pincodes: Array.from(new Set(pins)),
+            deliveryFee: Number(zoneFee) || 0,
+            isActive: true,
+            note: zoneNote.trim() || undefined
+        });
+
+        alert('✅ Delivery Location added successfully!');
+        setIsAddingZone(false);
+        setZoneName('');
+        setZoneCity('Kayamkulam');
+        setZonePincodes('');
+        setZoneFee(0);
+        setZoneNote('');
+    };
+
+    const handleSaveZone = async () => {
+        if (!editingZone) return;
+        if (!editZoneName.trim() || !editZoneCity.trim() || !editZonePincodes.trim()) {
+            alert('Please fill Location Name, City, and at least one 6-digit Pincode');
+            return;
+        }
+
+        const pins = editZonePincodes
+            .split(/[,;\s]+/)
+            .map(p => p.trim())
+            .filter(p => p.length === 6);
+
+        if (pins.length === 0) {
+            alert('Please enter valid 6-digit pincode(s) separated by comma (e.g. 690502)');
+            return;
+        }
+
+        await updateZone(editingZone.id, {
+            name: editZoneName.trim(),
+            city: editZoneCity.trim(),
+            pincodes: Array.from(new Set(pins)),
+            deliveryFee: Number(editZoneFee) || 0,
+            isActive: editZoneActive,
+            note: editZoneNote.trim() || undefined
+        });
+
+        alert('✅ Location updated successfully!');
+        setEditingZone(null);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Sidebar */}
@@ -435,6 +528,12 @@ export function AdminDashboard() {
                         <LayoutGrid size={20} /> Categories
                     </button>
                     <button
+                        onClick={() => setActiveTab('locations')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'locations' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                        <MapPin size={20} /> Locations
+                    </button>
+                    <button
                         onClick={() => setActiveTab('orders')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'orders' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
@@ -455,7 +554,8 @@ export function AdminDashboard() {
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-2xl font-bold text-gray-800">
                         {activeTab === 'products' ? 'Product Management' : 
-                         activeTab === 'categories' ? 'Category Management' : 'Order Management'}
+                         activeTab === 'categories' ? 'Category Management' : 
+                         activeTab === 'locations' ? 'Delivery Locations & Service Areas' : 'Order Management'}
                     </h1>
                     <div className="flex gap-4">
                         {activeTab === 'products' ? (
@@ -471,6 +571,20 @@ export function AdminDashboard() {
                                 className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-800 transition-colors"
                             >
                                 + Add Category
+                            </button>
+                        ) : activeTab === 'locations' ? (
+                            <button
+                                onClick={() => {
+                                    setIsAddingZone(true);
+                                    setZoneName('');
+                                    setZoneCity('Kayamkulam');
+                                    setZonePincodes('');
+                                    setZoneFee(0);
+                                    setZoneNote('');
+                                }}
+                                className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-800 transition-colors flex items-center gap-1.5"
+                            >
+                                <MapPin size={16} /> + Add Location
                             </button>
                         ) : (
                             <div className="flex items-center gap-2">
@@ -623,6 +737,163 @@ export function AdminDashboard() {
                                 </div>
                             </motion.div>
                         ))}
+                    </div>
+                ) : activeTab === 'locations' ? (
+                    <div className="space-y-6">
+                        {/* Service Area Info Banner */}
+                        <div className="bg-gradient-to-r from-red-500/10 via-amber-500/10 to-transparent border border-red-200/50 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3.5">
+                                <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-md">
+                                    <MapPin size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 text-base">Service Area Access Control</h3>
+                                    <p className="text-gray-600 text-xs mt-1 max-w-2xl leading-relaxed">
+                                        Orders on checkout are restricted strictly to the active locations and pincodes below. Non-serviceable customers will see a clear message that their area is coming soon. You can expand to new towns or pincodes anytime!
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className="px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 shadow-sm">
+                                    {zones.filter(z => z.isActive).length} Active Zones
+                                </span>
+                                <span className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs font-bold text-primary">
+                                    {zones.filter(z => z.isActive).reduce((acc, z) => acc + z.pincodes.length, 0)} Pincodes Allowed
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Locations List */}
+                        {zones.length === 0 ? (
+                            <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
+                                <MapPin size={40} className="mx-auto text-gray-300 mb-3" />
+                                <h4 className="font-bold text-gray-800 text-lg">No Delivery Locations Configured</h4>
+                                <p className="text-gray-500 text-sm max-w-sm mx-auto mt-1 mb-6">
+                                    Add your first location (e.g., Kayamkulam Town - 690502) to start accepting customer orders.
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        setIsAddingZone(true);
+                                        setZoneName('Kayamkulam Town');
+                                        setZoneCity('Kayamkulam');
+                                        setZonePincodes('690502');
+                                        setZoneFee(0);
+                                        setZoneNote('Primary delivery hub');
+                                    }}
+                                    className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-red-800 transition-colors"
+                                >
+                                    + Add Default Location
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {zones.map((zone) => (
+                                    <motion.div
+                                        layout
+                                        key={zone.id}
+                                        className={`bg-white rounded-2xl border transition-all overflow-hidden flex flex-col justify-between ${
+                                            zone.isActive 
+                                                ? 'border-gray-200 shadow-sm hover:shadow-md' 
+                                                : 'border-gray-200/60 bg-gray-50/50 opacity-80'
+                                        }`}
+                                    >
+                                        <div className="p-5">
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-bold text-gray-900 text-lg">{zone.name}</h4>
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                                            zone.isActive 
+                                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                                                : 'bg-gray-200 text-gray-600'
+                                                        }`}>
+                                                            {zone.isActive ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 font-medium mt-0.5">{zone.city}</p>
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingZone(zone);
+                                                            setEditZoneName(zone.name);
+                                                            setEditZoneCity(zone.city);
+                                                            setEditZonePincodes(zone.pincodes.join(', '));
+                                                            setEditZoneFee(zone.deliveryFee || 0);
+                                                            setEditZoneNote(zone.note || '');
+                                                            setEditZoneActive(zone.isActive);
+                                                        }}
+                                                        className="p-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors"
+                                                        title="Edit Location"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm(`Are you sure you want to delete "${zone.name}"?`)) {
+                                                                deleteZone(zone.id);
+                                                            }
+                                                        }}
+                                                        className="p-2 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                                                        title="Delete Location"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {zone.note && (
+                                                <p className="text-xs text-gray-500 mb-4 bg-gray-50 p-2.5 rounded-lg border border-gray-100 italic">
+                                                    "{zone.note}"
+                                                </p>
+                                            )}
+
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                                        Serviceable Pincodes ({zone.pincodes.length})
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {zone.pincodes.map((pin) => (
+                                                            <span
+                                                                key={pin}
+                                                                className="px-2.5 py-1 bg-primary/5 text-primary border border-primary/15 rounded-lg text-xs font-bold"
+                                                            >
+                                                                {pin}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                                                    <span className="text-gray-500 font-medium">Delivery Fee:</span>
+                                                    <span className="font-bold text-gray-900">
+                                                        {zone.deliveryFee > 0 ? `₹${zone.deliveryFee}` : 'Free Delivery'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between">
+                                            <span className="text-xs text-gray-600 font-medium">
+                                                {zone.isActive ? '✅ Accepting orders' : '⏸️ Orders paused'}
+                                            </span>
+                                            <button
+                                                onClick={() => toggleZone(zone.id)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                                    zone.isActive
+                                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                                        : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                                                }`}
+                                            >
+                                                {zone.isActive ? 'Pause' : 'Activate'}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ) : (
                     // Orders List
@@ -1544,6 +1815,263 @@ export function AdminDashboard() {
                                     className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                 >
                                     Confirm Assignment
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Add Delivery Location Modal */}
+            <AnimatePresence>
+                {isAddingZone && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4"
+                        onClick={() => setIsAddingZone(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                                        <MapPin size={22} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">Add Delivery Location</h3>
+                                        <p className="text-xs text-gray-500">Allow customers in this area to place orders</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsAddingZone(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                                    <X size={22} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Location / Area Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={zoneName}
+                                        onChange={(e) => setZoneName(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                        placeholder="e.g. Kayamkulam Town, Krishnapuram"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        City / Region <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={zoneCity}
+                                        onChange={(e) => setZoneCity(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                        placeholder="e.g. Kayamkulam"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Serviceable Pincodes <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={zonePincodes}
+                                        onChange={(e) => setZonePincodes(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium font-mono"
+                                        placeholder="e.g. 690502, 690503"
+                                    />
+                                    <p className="text-[11px] text-gray-500 mt-1">
+                                        Enter 6-digit postal codes separated by comma. Only customers in these pincodes can order.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Delivery Fee (₹)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={zoneFee === 0 ? '' : zoneFee}
+                                        onChange={(e) => setZoneFee(Number(e.target.value) || 0)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                        placeholder="0 (Free Delivery)"
+                                    />
+                                    <p className="text-[11px] text-gray-500 mt-1">Leave 0 for free delivery.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Internal Note (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={zoneNote}
+                                        onChange={(e) => setZoneNote(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                        placeholder="e.g. Primary launch area, Kayamkulam market radius"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setIsAddingZone(false)}
+                                    className="px-6 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddZone}
+                                    className="px-6 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-red-800 transition-colors flex items-center gap-2 text-sm shadow-md"
+                                >
+                                    <Save size={18} />
+                                    Save Location
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Delivery Location Modal */}
+            <AnimatePresence>
+                {editingZone && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4"
+                        onClick={() => setEditingZone(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                                        <Edit size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">Edit Delivery Location</h3>
+                                        <p className="text-xs text-gray-500">Update zone details, pincodes, or status</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setEditingZone(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                                    <X size={22} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Location / Area Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editZoneName}
+                                        onChange={(e) => setEditZoneName(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        City / Region <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editZoneCity}
+                                        onChange={(e) => setEditZoneCity(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Serviceable Pincodes <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editZonePincodes}
+                                        onChange={(e) => setEditZonePincodes(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium font-mono"
+                                    />
+                                    <p className="text-[11px] text-gray-500 mt-1">
+                                        Separate 6-digit pincodes with commas (e.g. 690502, 690503).
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Delivery Fee (₹)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={editZoneFee === 0 ? '' : editZoneFee}
+                                        onChange={(e) => setEditZoneFee(Number(e.target.value) || 0)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Internal Note
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editZoneNote}
+                                        onChange={(e) => setEditZoneNote(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-medium"
+                                    />
+                                </div>
+
+                                <div className="pt-2">
+                                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200">
+                                        <input
+                                            type="checkbox"
+                                            checked={editZoneActive}
+                                            onChange={(e) => setEditZoneActive(e.target.checked)}
+                                            className="w-4 h-4 text-primary rounded focus:ring-primary"
+                                        />
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-900">Active Location</p>
+                                            <p className="text-[11px] text-gray-500">Uncheck to temporarily pause customer orders in this zone</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setEditingZone(null)}
+                                    className="px-6 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveZone}
+                                    className="px-6 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-red-800 transition-colors flex items-center gap-2 text-sm shadow-md"
+                                >
+                                    <Save size={18} />
+                                    Update Location
                                 </button>
                             </div>
                         </motion.div>

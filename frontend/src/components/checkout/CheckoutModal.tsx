@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { X, MapPin, CheckCircle2, Banknote, ShoppingBag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, MapPin, CheckCircle2, Banknote, ShoppingBag, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDeliveryZoneStore } from '../../store/deliveryZoneStore';
 
 interface CheckoutModalProps {
     isOpen: boolean;
@@ -12,6 +13,14 @@ interface CheckoutModalProps {
 export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: CheckoutModalProps) {
     const [step, setStep] = useState<1 | 2 | 3>(1);
     
+    const { zones, fetchZones, checkDeliveryAvailability } = useDeliveryZoneStore();
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchZones();
+        }
+    }, [isOpen, fetchZones]);
+
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState({
@@ -24,8 +33,6 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
     const [loadingLocation, setLoadingLocation] = useState(false);
     const [paymentMethod] = useState<'COD'>('COD');
     const [paymentProof] = useState<string>('');
-
-
 
     const handleNext = () => setStep(step < 3 ? (step + 1) as 1 | 2 | 3 : 3);
     const handleBack = () => setStep(step > 1 ? (step - 1) as 1 | 2 | 3 : 1);
@@ -76,8 +83,16 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
 
     if (!isOpen) return null;
 
+    const activeZones = zones.filter((z) => z.isActive);
+    const deliveryCheck = checkDeliveryAvailability(address.pincode);
+    const isPincodeEntered = address.pincode.replace(/\D/g, '').length === 6;
+
     const isStep1Valid = name.trim() !== '' && phone.length >= 10;
-    const isStep2Valid = address.street.trim() !== '' && address.city.trim() !== '' && address.pincode.length >= 6;
+    const isStep2Valid = 
+        address.street.trim() !== '' && 
+        address.city.trim() !== '' && 
+        isPincodeEntered && 
+        deliveryCheck.isAvailable;
     const isStep3Valid = true; // COD is always selected and valid
 
     return (
@@ -191,11 +206,25 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
 
                                 {/* STEP 2: Delivery Address */}
                                 {step === 2 && (
-                                    <div className="space-y-6">
-                                         <div className="flex flex-col gap-4 mb-2">
+                                    <div className="space-y-5">
+                                        <div className="flex flex-col gap-3">
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-900 mb-1">Delivery Address</h3>
-                                                <p className="text-sm text-gray-500">Where should we send your fresh cuts?</p>
+                                                <p className="text-sm text-gray-500">Where should we deliver your fresh cuts?</p>
+                                            </div>
+
+                                            {/* Serviceable Locations Banner */}
+                                            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-start gap-2.5">
+                                                <MapPin size={18} className="text-primary shrink-0 mt-0.5" />
+                                                <div className="text-xs">
+                                                    <span className="font-bold text-gray-900">Current Service Area: </span>
+                                                    <span className="text-gray-700">
+                                                        {activeZones.length > 0 
+                                                            ? activeZones.map(z => `${z.name} (${z.pincodes.join(', ')})`).join(' • ')
+                                                            : 'Kayamkulam Town (690502)'}
+                                                    </span>
+                                                    <p className="text-[11px] text-gray-500 mt-0.5">We are currently delivering exclusively in this area and expanding soon!</p>
+                                                </div>
                                             </div>
                                             
                                             <button
@@ -256,12 +285,46 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                         inputMode="numeric"
                                                         value={address.pincode}
                                                         onChange={(e) => setAddress({ ...address, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
+                                                        className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:ring-4 outline-none transition-all text-gray-900 font-semibold ${
+                                                            isPincodeEntered
+                                                                ? deliveryCheck.isAvailable
+                                                                    ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/10'
+                                                                    : 'border-red-500 focus:border-red-500 focus:ring-red-500/10'
+                                                                : 'border-gray-200 focus:border-primary focus:ring-primary/10'
+                                                        }`}
                                                         placeholder="690502"
                                                         autoComplete="postal-code"
                                                     />
                                                 </div>
                                             </div>
+
+                                            {/* Pincode Availability Feedback */}
+                                            {isPincodeEntered && (
+                                                <div>
+                                                    {deliveryCheck.isAvailable ? (
+                                                        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center gap-2.5 text-emerald-800 text-xs font-semibold">
+                                                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                                            <span>
+                                                                ✅ Serviceable! Delivery is available in {deliveryCheck.matchedZone?.name || address.city} 
+                                                                {deliveryCheck.matchedZone?.deliveryFee && deliveryCheck.matchedZone.deliveryFee > 0 
+                                                                    ? ` (Delivery: ₹${deliveryCheck.matchedZone.deliveryFee})` 
+                                                                    : ' (Free Delivery)'}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-red-50 border border-red-300 p-3.5 rounded-xl flex items-start gap-2.5 text-red-800 text-xs shadow-sm">
+                                                            <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
+                                                            <div>
+                                                                <p className="font-bold text-red-900 text-sm">Delivery Not Available in {address.pincode}</p>
+                                                                <p className="text-red-700 mt-1 leading-relaxed">
+                                                                    Currently we are exclusively serving: <span className="font-semibold">{activeZones.map(z => `${z.name} (${z.pincodes.join(', ')})`).join(', ') || 'Kayamkulam (690502)'}</span>. We will be expanding to your area soon!
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Landmark (Optional)</label>
                                                 <input
@@ -269,7 +332,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     value={address.landmark}
                                                     onChange={(e) => setAddress({ ...address, landmark: e.target.value })}
                                                     className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900"
-                                                    placeholder="E.g. Near Apollo Hospital"
+                                                    placeholder="E.g. Near Kayamkulam KSRTC Stand"
                                                     autoComplete="off"
                                                 />
                                             </div>

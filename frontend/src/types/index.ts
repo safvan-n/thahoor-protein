@@ -19,3 +19,13 @@ export interface Cut {
 export interface CartItem extends Cut {
     qtyKg: number;
 }
+
+export interface DeliveryZone {
+    id: string;
+    name: string;
+    city: string;
+    pincodes: string[];
+    deliveryFee: number;
+    isActive: boolean;
+    note?: string;
+}
