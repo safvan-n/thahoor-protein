@@ -13,7 +13,8 @@ import {
     CheckCircle2, 
     TrendingUp, 
     User,
-    LayoutGrid
+    LayoutGrid,
+    Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Cut, type Category } from '../../types';
@@ -140,9 +141,13 @@ export function AdminDashboard() {
     };
 
     // Form states for editing
+    const [editName, setEditName] = useState('');
+    const [editCategory, setEditCategory] = useState('');
+    const [editDescription, setEditDescription] = useState('');
     const [editPrice, setEditPrice] = useState<number>(0);
     const [editImage, setEditImage] = useState<string>('');
     const [editSecondaryImage, setEditSecondaryImage] = useState<string>('');
+    const [isSavingProduct, setIsSavingProduct] = useState(false);
 
     // Form states for editing category
     const [editCatName, setEditCatName] = useState('');
@@ -293,47 +298,82 @@ export function AdminDashboard() {
         window.open(`https://wa.me/?text=${text}`, '_blank');
     };
 
-    const saveProduct = () => {
-        if (editingProduct) {
-            updateProduct(editingProduct.id, {
-                pricePerKg: editPrice,
-                image: editImage,
-                secondaryImage: editSecondaryImage
-            });
-            setEditingProduct(null);
-            setEditSecondaryImage('');
+    const saveProduct = async () => {
+        if (!editingProduct) return;
+        if (!editName.trim()) {
+            alert("Please enter a product name");
+            return;
         }
-    };
-
-
-    const handleAddProduct = () => {
-        if (!newName || !newPrice || !newImage) {
-            alert("Please fill all fields");
+        if (!editPrice || editPrice <= 0) {
+            alert("Please enter a valid price");
+            return;
+        }
+        if (!editImage.trim()) {
+            alert("Please provide a product image");
             return;
         }
 
-        addProduct({
-            id: Date.now().toString(),
-            name: newName,
-            pricePerKg: newPrice,
-            categoryId: newCategory,
-            description: newDescription,
-            image: newImage,
-            secondaryImage: newSecondaryImage
-        });
-
-        setIsAddingProduct(false);
-        // Reset form
-        setNewName('');
-        setNewPrice(0);
-        setNewDescription('');
-        setNewImage('');
-        setNewSecondaryImage('');
+        setIsSavingProduct(true);
+        try {
+            await updateProduct(editingProduct.id, {
+                name: editName.trim(),
+                categoryId: editCategory || editingProduct.categoryId,
+                description: editDescription.trim(),
+                pricePerKg: editPrice,
+                image: editImage.trim(),
+                secondaryImage: editSecondaryImage.trim()
+            });
+            alert("✅ Product updated successfully!");
+            setEditingProduct(null);
+            setEditSecondaryImage('');
+        } catch (err: any) {
+            console.error("Failed to save product:", err);
+            alert(`Failed to update product: ${err.message || 'Please check admin permissions or network connection.'}`);
+        } finally {
+            setIsSavingProduct(false);
+        }
     };
 
-    const handleDeleteProduct = (id: string) => {
+    const handleAddProduct = async () => {
+        if (!newName.trim() || !newPrice || !newImage.trim()) {
+            alert("Please fill all required fields (Name, Price, Image)");
+            return;
+        }
+
+        try {
+            await addProduct({
+                id: '',
+                name: newName.trim(),
+                pricePerKg: newPrice,
+                categoryId: newCategory || categories[0]?.id || '1',
+                description: newDescription.trim(),
+                image: newImage.trim(),
+                secondaryImage: newSecondaryImage.trim()
+            });
+
+            alert("✅ Product added successfully!");
+            setIsAddingProduct(false);
+            // Reset form
+            setNewName('');
+            setNewPrice(0);
+            setNewDescription('');
+            setNewImage('');
+            setNewSecondaryImage('');
+        } catch (err: any) {
+            console.error("Failed to add product:", err);
+            alert(`Failed to add product: ${err.message || 'Please check admin permissions.'}`);
+        }
+    };
+
+    const handleDeleteProduct = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
-            deleteProduct(id);
+            try {
+                await deleteProduct(id);
+                alert("✅ Product deleted successfully!");
+            } catch (err: any) {
+                console.error("Failed to delete product:", err);
+                alert(`Failed to delete product: ${err.message || 'Please check admin permissions.'}`);
+            }
         }
     };
 
@@ -491,6 +531,9 @@ export function AdminDashboard() {
                                         <button
                                             onClick={() => {
                                                 setEditingProduct(product);
+                                                setEditName(product.name);
+                                                setEditCategory(product.categoryId);
+                                                setEditDescription(product.description || '');
                                                 setEditPrice(product.pricePerKg);
                                                 setEditImage(product.image);
                                                 setEditSecondaryImage(product.secondaryImage || '');
@@ -717,14 +760,52 @@ export function AdminDashboard() {
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
                                     <input
                                         type="text"
-                                        value={editingProduct.name}
-                                        disabled
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-500"
+                                        value={editName}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            if (text) {
+                                                e.preventDefault();
+                                                setEditName(text);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                                        placeholder="Product Name"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                    <select
+                                        value={editCategory}
+                                        onChange={(e: ChangeEvent<HTMLSelectElement>) => setEditCategory(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                                    >
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea
+                                        value={editDescription}
+                                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setEditDescription(e.target.value)}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            if (text) {
+                                                e.preventDefault();
+                                                setEditDescription(text);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                                        rows={3}
                                     />
                                 </div>
 
@@ -868,16 +949,27 @@ export function AdminDashboard() {
                             <div className="mt-8 flex gap-3 justify-end">
                                 <button
                                     onClick={() => setEditingProduct(null)}
-                                    className="px-6 py-2.5 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                    disabled={isSavingProduct}
+                                    className="px-6 py-2.5 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={saveProduct}
-                                    className="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-red-800 transition-colors flex items-center gap-2"
+                                    disabled={isSavingProduct}
+                                    className="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-red-800 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                                 >
-                                    <Save size={18} />
-                                    Save Changes
+                                    {isSavingProduct ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            Save Changes
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </motion.div>

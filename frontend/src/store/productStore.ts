@@ -49,7 +49,10 @@ export const useProductStore = create<ProductState>()(
             updateProduct: async (id, updates) => {
                 try {
                     const productRef = doc(db, 'products', id);
-                    await updateDoc(productRef, updates);
+                    await updateDoc(productRef, {
+                        ...updates,
+                        updatedAt: new Date().toISOString()
+                    });
                     set((state) => ({
                         products: state.products.map((product) =>
                             product.id === id ? { ...product, ...updates } : product
@@ -57,6 +60,7 @@ export const useProductStore = create<ProductState>()(
                     }));
                 } catch (error) {
                     console.error('Failed to update product in Firestore:', error);
+                    throw error;
                 }
             },
 
@@ -69,14 +73,15 @@ export const useProductStore = create<ProductState>()(
                     }));
                 } catch (error) {
                     console.error('Failed to delete product from Firestore:', error);
+                    throw error;
                 }
             },
 
             addProduct: async (product) => {
                 try {
                     const productsCol = collection(db, 'products');
-                    // Ensure we don't have double IDs
-                    const { ...productData } = product;
+                    // Strip client temporary id so Firestore doesn't save conflicting id field
+                    const { id: _tempId, ...productData } = product;
                     const docRef = await addDoc(productsCol, {
                         ...productData,
                         createdAt: new Date().toISOString()
@@ -88,6 +93,7 @@ export const useProductStore = create<ProductState>()(
                     }));
                 } catch (error) {
                     console.error('Failed to add product to Firestore:', error);
+                    throw error;
                 }
             },
         }),
