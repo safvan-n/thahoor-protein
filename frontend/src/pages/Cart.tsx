@@ -99,7 +99,7 @@ export function Cart() {
     const totalWeightKg = items.reduce((sum, item) => sum + item.qtyKg, 0);
 
     return (
-        <div className="min-h-screen bg-[#fcfbfa] pt-6 sm:pt-12 md:pt-16 pb-36">
+        <div className="min-h-screen bg-[#fcfbfa] pt-4 sm:pt-12 md:pt-16 pb-44 sm:pb-36 w-full overflow-x-hidden">
             <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
             <CheckoutModal
                 isOpen={showCheckout}
@@ -108,12 +108,12 @@ export function Cart() {
                 totalAmount={totalPrice}
             />
 
-            <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+            <div className="container mx-auto px-3.5 sm:px-6 max-w-6xl w-full">
                 
                 {/* Header */}
-                <header className="mb-6 sm:mb-10 border-b border-gray-200 pb-4 sm:pb-6 flex items-end justify-between">
+                <header className="mb-5 sm:mb-10 border-b border-gray-200 pb-3 sm:pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-1">
                     <div>
-                        <div className="text-primary text-[10px] font-bold uppercase tracking-[0.3em] mb-1">
+                        <div className="text-primary text-[10px] font-bold uppercase tracking-[0.3em] mb-0.5">
                             Fresh Selection
                         </div>
                         <h1 className="text-2xl sm:text-4xl md:text-5xl font-serif font-black text-gray-900 tracking-tight">
@@ -125,10 +125,10 @@ export function Cart() {
                     </span>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-12 w-full">
                     
                     {/* Items List Column */}
-                    <div className="lg:col-span-7 space-y-3 sm:space-y-4">
+                    <div className="lg:col-span-7 space-y-3 sm:space-y-4 w-full">
                         <AnimatePresence mode="popLayout">
                             {items.map((item) => (
                                 <motion.div 
@@ -137,10 +137,10 @@ export function Cart() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
-                                    className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3.5 sm:gap-5"
+                                    className="bg-white p-3 sm:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 sm:gap-5 w-full overflow-hidden"
                                 >
                                     {/* Thumbnail */}
-                                    <div className="relative w-18 h-18 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0">
                                         <img 
                                             src={item.image} 
                                             alt={item.name} 
@@ -150,27 +150,27 @@ export function Cart() {
 
                                     {/* Item Details */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2 mb-1">
+                                        <div className="flex items-start justify-between gap-2 mb-0.5">
                                             <h3 className="font-serif font-bold text-sm sm:text-lg text-gray-900 truncate">
                                                 {item.name}
                                             </h3>
                                             <button
                                                 onClick={() => removeFromCart(item.id)}
                                                 aria-label="Remove item"
-                                                className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg transition-colors"
+                                                className="p-1 text-gray-300 hover:text-red-500 rounded-lg transition-colors shrink-0"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
 
-                                        <p className="text-[11px] text-gray-400 font-medium mb-3">
+                                        <p className="text-[11px] text-gray-400 font-medium mb-2.5">
                                             ₹{item.pricePerKg} per kg
                                         </p>
 
                                         {/* Stepper & Line Price */}
-                                        <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
                                             {/* Quantity Controller */}
-                                            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                                            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-0.5 shrink-0">
                                                 <button 
                                                     onClick={() => updateQty(item.id, Math.max(0.5, item.qtyKg - 0.5))}
                                                     className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-white rounded active:scale-90 transition-all"
@@ -178,7 +178,7 @@ export function Cart() {
                                                     <Minus size={12} />
                                                 </button>
                                                 
-                                                <span className="text-xs font-black text-gray-900 px-2 min-w-[50px] text-center">
+                                                <span className="text-xs font-black text-gray-900 px-1.5 min-w-[44px] text-center">
                                                     {item.qtyKg} kg
                                                 </span>
 
@@ -190,7 +190,7 @@ export function Cart() {
                                                 </button>
                                             </div>
 
-                                            <div className="text-right">
+                                            <div className="text-right shrink-0">
                                                 <div className="text-base sm:text-lg font-serif font-black text-gray-900 leading-none">
                                                     ₹{(item.pricePerKg * item.qtyKg).toFixed(0)}
                                                 </div>
@@ -202,19 +202,19 @@ export function Cart() {
                         </AnimatePresence>
 
                         {/* Fast Phone Support Help */}
-                        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                        <div className="p-3.5 sm:p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                                <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
                                     <PhoneCall size={18} />
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-900">Custom Cut Requirement?</p>
-                                    <p className="text-[10px] text-gray-500">Call butcher directly for special trimming</p>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-gray-900 truncate">Custom Cut Requirement?</p>
+                                    <p className="text-[10px] text-gray-500 truncate">Call butcher directly for special trimming</p>
                                 </div>
                             </div>
                             <a 
                                 href="tel:8075575472" 
-                                className="px-3 py-1.5 bg-white border border-primary/20 text-primary text-xs font-bold rounded-lg shadow-sm"
+                                className="px-3 py-1.5 bg-white border border-primary/20 text-primary text-xs font-bold rounded-lg shadow-sm shrink-0"
                             >
                                 Call
                             </a>
@@ -222,13 +222,13 @@ export function Cart() {
                     </div>
 
                     {/* Desktop Order Summary Column */}
-                    <div className="lg:col-span-5">
-                        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-xl sticky top-24">
-                            <h3 className="text-lg sm:text-xl font-serif font-black mb-6 text-gray-900 border-b border-gray-100 pb-4">
+                    <div className="lg:col-span-5 w-full">
+                        <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xl sticky top-24">
+                            <h3 className="text-lg sm:text-xl font-serif font-black mb-5 text-gray-900 border-b border-gray-100 pb-3">
                                 Order Summary
                             </h3>
                             
-                            <div className="space-y-4 mb-6 text-xs sm:text-sm">
+                            <div className="space-y-3.5 mb-6 text-xs sm:text-sm">
                                 <div className="flex justify-between items-center">
                                     <span className="text-gray-500">Total Cuts Selected</span>
                                     <span className="font-bold text-gray-900">{items.length} items ({totalWeightKg} kg)</span>
@@ -254,13 +254,13 @@ export function Cart() {
 
                             <button
                                 onClick={handleCheckout}
-                                className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-xl shadow-primary/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                className="w-full py-3.5 sm:py-4 bg-primary hover:bg-primary-dark text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-xl shadow-primary/25 transition-all active:scale-95 flex items-center justify-center gap-2"
                             >
                                 <span>Proceed To Checkout</span>
                                 <ArrowRight size={16} />
                             </button>
 
-                            <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3 text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+                            <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 gap-2 text-gray-400 text-[10px] font-bold uppercase tracking-wider">
                                 <div className="flex items-center gap-1.5">
                                     <ShieldCheck size={14} className="text-primary" />
                                     <span>100% Halal Certified</span>
@@ -277,7 +277,7 @@ export function Cart() {
 
             {/* Mobile Fixed Sticky Checkout Footer Bar */}
             <div className="lg:hidden fixed bottom-[64px] left-0 right-0 z-30 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-4 py-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
-                <div className="container mx-auto flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
                     <div>
                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Amount</div>
                         <div className="text-xl font-serif font-black text-primary leading-none">
@@ -287,7 +287,7 @@ export function Cart() {
 
                     <button
                         onClick={handleCheckout}
-                        className="flex-1 max-w-[220px] py-3.5 px-4 bg-primary hover:bg-primary-dark text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2 active:scale-95 transition-all"
+                        className="flex-1 max-w-[200px] py-3.5 px-4 bg-primary hover:bg-primary-dark text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2 active:scale-95 transition-all"
                     >
                         <span>Checkout</span>
                         <ArrowRight size={15} />
