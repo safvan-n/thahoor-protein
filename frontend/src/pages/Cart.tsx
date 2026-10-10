@@ -34,14 +34,14 @@ export function Cart() {
         finalTotal?: number;
     }) => {
         const deliveryFee = details.deliveryFee || 0;
-        const finalPayable = details.finalTotal || (totalPrice + deliveryFee);
+        const grandTotal = details.finalTotal ?? (totalPrice + deliveryFee);
 
         const newOrder: any = {
             orderId: 'ORD-' + Date.now().toString().slice(-6),
             status: 'Placed',
-            totalAmount: finalPayable,
             subtotal: totalPrice,
             deliveryFee: deliveryFee,
+            totalAmount: grandTotal,
             items: items.map(i => ({ name: i.name, qty: i.qtyKg, price: i.pricePerKg })),
             customer: {
                 name: details.name || user?.name || 'Guest',
@@ -65,14 +65,13 @@ export function Cart() {
             }
 
             const orderItems = items.map(i => `- ${i.name}: ${i.qtyKg}kg @ ₹${i.pricePerKg}/kg = ₹${i.qtyKg * i.pricePerKg}`).join('%0A');
-            const subtotalText = `%0A*Items Subtotal: ₹${totalPrice}*`;
-            const deliveryText = deliveryFee > 0 ? `%0A*Delivery Fee: ₹${deliveryFee}*` : `%0A*Delivery Fee: FREE*`;
-            const totalText = `%0A*Total to Collect: ₹${finalPayable}*`;
+            const deliveryText = deliveryFee > 0 ? `%0A*Delivery Charge: ₹${deliveryFee}*` : '%0A*Delivery Charge: FREE*';
+            const totalText = `%0A*Items Subtotal: ₹${totalPrice}*${deliveryText}%0A*Grand Total: ₹${grandTotal}*`;
 
             const paymentText = `%0A*Payment Method:* ${details.paymentMethod}`;
             const userText = `%0A%0A*Customer:* ${user?.name || details.name}`;
 
-            const text = `*New App Order* 📦%0A%0A${orderItems}${subtotalText}${deliveryText}${totalText}${paymentText}${userText}${addressText}${locationText}%0A%0APlease confirm delivery time.`;
+            const text = `*New App Order* 📦%0A%0A${orderItems}${totalText}${paymentText}${userText}${addressText}${locationText}%0A%0APlease confirm delivery time.`;
 
             window.open(`https://wa.me/918075575472?text=${text}`, '_blank');
 

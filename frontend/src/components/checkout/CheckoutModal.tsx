@@ -13,8 +13,8 @@ interface CheckoutModalProps {
         location: any; 
         paymentMethod: 'COD'; 
         paymentProof?: string;
-        deliveryFee: number;
-        finalTotal: number;
+        deliveryFee?: number;
+        finalTotal?: number;
     }) => void;
     totalAmount: number;
 }
@@ -329,7 +329,7 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                             <div className="flex items-center gap-2">
                                                                 <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
                                                                 <span className="font-semibold">
-                                                                    Serviceable! {deliveryCheck.matchedZone?.name || address.city}
+                                                                    Serviceable! Delivery in {deliveryCheck.matchedZone?.name || address.city}
                                                                 </span>
                                                             </div>
                                                             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${
