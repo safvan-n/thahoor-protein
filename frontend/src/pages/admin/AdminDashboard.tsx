@@ -86,12 +86,13 @@ export function AdminDashboard() {
     };
 
     const handlePasteImageOrUrl = (
-        e: React.ClipboardEvent<HTMLInputElement | HTMLDivElement>,
+        e: React.ClipboardEvent<any>,
         folder: 'products' | 'categories',
         id: string,
         setUrl: (url: string) => void,
         fieldKey: string
     ) => {
+        // 1. Check for image files in clipboardData.items
         const items = e.clipboardData?.items;
         if (items) {
             for (let i = 0; i < items.length; i++) {
@@ -99,15 +100,41 @@ export function AdminDashboard() {
                     const file = items[i].getAsFile();
                     if (file) {
                         e.preventDefault();
+                        e.stopPropagation();
                         handleImageFileChange(file, folder, id, setUrl, fieldKey);
                         return;
                     }
                 }
             }
         }
-        const text = e.clipboardData?.getData('text')?.trim();
-        if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image/'))) {
+
+        // 2. Check for image files in clipboardData.files
+        const files = e.clipboardData?.files;
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
             e.preventDefault();
+            e.stopPropagation();
+            handleImageFileChange(files[0], folder, id, setUrl, fieldKey);
+            return;
+        }
+
+        // 3. Check for HTML containing <img src="...">
+        const html = e.clipboardData?.getData('text/html');
+        if (html) {
+            const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+            if (match && match[1]) {
+                e.preventDefault();
+                e.stopPropagation();
+                setUrl(match[1]);
+                return;
+            }
+        }
+
+        // 4. Check for text URL or text string
+        let text = e.clipboardData?.getData('text')?.trim() || '';
+        text = text.replace(/^["']|["']$/g, '').trim();
+        if (text) {
+            e.preventDefault();
+            e.stopPropagation();
             setUrl(text);
         }
     };
@@ -673,8 +700,15 @@ export function AdminDashboard() {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl"
+                            className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl focus:outline-none"
                             onClick={e => e.stopPropagation()}
+                            onPaste={(e) => {
+                                const target = e.target as HTMLElement;
+                                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+                                if (editingProduct) {
+                                    handlePasteImageOrUrl(e, 'products', editingProduct.id, setEditImage, 'editImage');
+                                }
+                            }}
                         >
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-gray-900">Edit Product</h3>
@@ -697,9 +731,21 @@ export function AdminDashboard() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Price per Kg (₹)</label>
                                     <input
-                                        type="number"
-                                        value={editPrice}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setEditPrice(Number(e.target.value))}
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={editPrice === 0 ? '' : editPrice}
+                                        placeholder="0"
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                            const val = e.target.value.replace(/[^0-9.]/g, '');
+                                            setEditPrice(val === '' ? 0 : Number(val));
+                                        }}
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pasted = e.clipboardData.getData('text').replace(/[^0-9.]/g, '');
+                                            if (pasted) {
+                                                setEditPrice(Number(pasted));
+                                            }
+                                        }}
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                                     />
                                 </div>
@@ -708,7 +754,11 @@ export function AdminDashboard() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
 
                                     {/* Image Preview */}
-                                    <div className="mb-3 h-48 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={(e) => editingProduct && handlePasteImageOrUrl(e, 'products', editingProduct.id, setEditImage, 'editImage')}
+                                        className="mb-3 h-48 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
                                         {editImage ? (
                                             <>
                                                 <img src={editImage} alt="Preview" className="w-full h-full object-contain" />
@@ -761,7 +811,11 @@ export function AdminDashboard() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
 
                                     {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={(e) => editingProduct && handlePasteImageOrUrl(e, 'products', `${editingProduct.id}_sec`, setEditSecondaryImage, 'editSecondaryImage')}
+                                        className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
                                         {editSecondaryImage ? (
                                             <>
                                                 <img src={editSecondaryImage} alt="Secondary Preview" className="w-full h-full object-contain" />
@@ -844,8 +898,13 @@ export function AdminDashboard() {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl"
+                            className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl focus:outline-none"
                             onClick={e => e.stopPropagation()}
+                            onPaste={(e) => {
+                                const target = e.target as HTMLElement;
+                                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+                                handlePasteImageOrUrl(e, 'products', `prod_${Date.now()}`, setNewImage, 'newImage');
+                            }}
                         >
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-gray-900">Add New Product</h3>
@@ -861,6 +920,13 @@ export function AdminDashboard() {
                                         type="text"
                                         value={newName}
                                         onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            if (text) {
+                                                e.preventDefault();
+                                                setNewName(text);
+                                            }
+                                        }}
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                                         placeholder="e.g. Chicken Lollipops"
                                     />
@@ -882,9 +948,21 @@ export function AdminDashboard() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Price per Kg (₹)</label>
                                     <input
-                                        type="number"
-                                        value={newPrice}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPrice(Number(e.target.value))}
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={newPrice === 0 ? '' : newPrice}
+                                        placeholder="e.g. 450"
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                            const val = e.target.value.replace(/[^0-9.]/g, '');
+                                            setNewPrice(val === '' ? 0 : Number(val));
+                                        }}
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pasted = e.clipboardData.getData('text').replace(/[^0-9.]/g, '');
+                                            if (pasted) {
+                                                setNewPrice(Number(pasted));
+                                            }
+                                        }}
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                                     />
                                 </div>
@@ -894,6 +972,13 @@ export function AdminDashboard() {
                                     <textarea
                                         value={newDescription}
                                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewDescription(e.target.value)}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData('text');
+                                            if (text) {
+                                                e.preventDefault();
+                                                setNewDescription(text);
+                                            }
+                                        }}
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                                         rows={3}
                                     />
@@ -903,7 +988,11 @@ export function AdminDashboard() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
                                     
                                     {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={(e) => handlePasteImageOrUrl(e, 'products', `prod_${Date.now()}`, setNewImage, 'newImage')}
+                                        className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
                                         {newImage ? (
                                             <>
                                                 <img src={newImage} alt="Preview" className="w-full h-full object-contain" />
@@ -954,7 +1043,11 @@ export function AdminDashboard() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Image (Optional)</label>
                                     
                                     {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={(e) => handlePasteImageOrUrl(e, 'products', `prod_sec_${Date.now()}`, setNewSecondaryImage, 'newSecondaryImage')}
+                                        className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
                                         {newSecondaryImage ? (
                                             <>
                                                 <img src={newSecondaryImage} alt="Secondary Preview" className="w-full h-full object-contain" />
@@ -1072,7 +1165,11 @@ export function AdminDashboard() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category Image</label>
                                     
                                     {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={(e) => handlePasteImageOrUrl(e, 'categories', `cat_${Date.now()}`, setCatImage, 'catImage')}
+                                        className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
                                         {catImage ? (
                                             <>
                                                 <img src={catImage} alt="Preview" className="w-full h-full object-contain" />
@@ -1189,7 +1286,11 @@ export function AdminDashboard() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category Image</label>
                                     
                                     {/* Image Preview */}
-                                    <div className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group">
+                                    <div
+                                        tabIndex={0}
+                                        onPaste={(e) => editingCategory && handlePasteImageOrUrl(e, 'categories', editingCategory.id, setEditCatImage, 'editCatImage')}
+                                        className="mb-3 h-40 w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative group focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
                                         {editCatImage ? (
                                             <>
                                                 <img src={editCatImage} alt="Preview" className="w-full h-full object-contain" />
