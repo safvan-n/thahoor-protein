@@ -165,7 +165,20 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                         type="tel"
                                                         inputMode="tel"
                                                         value={phone}
-                                                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                                        onChange={(e) => {
+                                                            let val = e.target.value.replace(/\D/g, '');
+                                                            if (val.startsWith('91') && val.length > 10) val = val.slice(2);
+                                                            else if (val.startsWith('0') && val.length > 10) val = val.slice(1);
+                                                            setPhone(val.slice(0, 10));
+                                                        }}
+                                                        onPaste={(e) => {
+                                                            e.preventDefault();
+                                                            const text = e.clipboardData.getData('text');
+                                                            let val = text.replace(/\D/g, '');
+                                                            if (val.startsWith('91') && val.length > 10) val = val.slice(2);
+                                                            else if (val.startsWith('0') && val.length > 10) val = val.slice(1);
+                                                            setPhone(val.slice(0, 10));
+                                                        }}
                                                         className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all text-gray-900 font-medium"
                                                         placeholder="98765 43210"
                                                         autoComplete="tel"

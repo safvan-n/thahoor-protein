@@ -58,6 +58,21 @@ export function ImageUploader({ currentImage, onFileSelect, isUploading = false 
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    e.preventDefault();
+                    handleFile(file);
+                    return;
+                }
+            }
+        }
+    };
+
     return (
         <div className="w-full">
             {error && (
@@ -68,10 +83,12 @@ export function ImageUploader({ currentImage, onFileSelect, isUploading = false 
             )}
             
             <div
+                tabIndex={0}
+                onPaste={handlePaste}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
-                className={`relative w-full h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all overflow-hidden bg-gray-50
+                className={`relative w-full h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all overflow-hidden bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20
                     ${isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-gray-400'}
                     ${preview ? 'border-none' : ''}`}
             >
@@ -109,7 +126,7 @@ export function ImageUploader({ currentImage, onFileSelect, isUploading = false 
                         <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
                             <FileImage className="text-gray-400" size={24} />
                         </div>
-                        <p className="text-sm font-bold text-gray-700">Click or drag image here</p>
+                        <p className="text-sm font-bold text-gray-700">Click, drag, or paste (Ctrl+V) image</p>
                         <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP up to 2MB</p>
                     </div>
                 )}

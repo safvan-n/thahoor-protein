@@ -85,6 +85,33 @@ export function AdminDashboard() {
         }
     };
 
+    const handlePasteImageOrUrl = (
+        e: React.ClipboardEvent<HTMLInputElement | HTMLDivElement>,
+        folder: 'products' | 'categories',
+        id: string,
+        setUrl: (url: string) => void,
+        fieldKey: string
+    ) => {
+        const items = e.clipboardData?.items;
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        e.preventDefault();
+                        handleImageFileChange(file, folder, id, setUrl, fieldKey);
+                        return;
+                    }
+                }
+            }
+        }
+        const text = e.clipboardData?.getData('text')?.trim();
+        if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image/'))) {
+            e.preventDefault();
+            setUrl(text);
+        }
+    };
+
     // Form states for editing
     const [editPrice, setEditPrice] = useState<number>(0);
     const [editImage, setEditImage] = useState<string>('');
@@ -723,6 +750,7 @@ export function AdminDashboard() {
                                             type="text"
                                             value={editImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setEditImage(e.target.value)}
+                                            onPaste={(e) => editingProduct && handlePasteImageOrUrl(e, 'products', editingProduct.id, setEditImage, 'editImage')}
                                             placeholder="https://example.com/image.jpg"
                                             className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
                                         />
@@ -775,6 +803,7 @@ export function AdminDashboard() {
                                             type="text"
                                             value={editSecondaryImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setEditSecondaryImage(e.target.value)}
+                                            onPaste={(e) => editingProduct && handlePasteImageOrUrl(e, 'products', `${editingProduct.id}_sec`, setEditSecondaryImage, 'editSecondaryImage')}
                                             placeholder="https://example.com/secondary-image.jpg"
                                             className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-1 focus:ring-primary focus:border-transparent outline-none"
                                         />
@@ -914,6 +943,7 @@ export function AdminDashboard() {
                                             type="text"
                                             value={newImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setNewImage(e.target.value)}
+                                            onPaste={(e) => handlePasteImageOrUrl(e, 'products', `prod_${Date.now()}`, setNewImage, 'newImage')}
                                             placeholder="https://example.com/image.jpg"
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
@@ -964,6 +994,7 @@ export function AdminDashboard() {
                                             type="text"
                                             value={newSecondaryImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setNewSecondaryImage(e.target.value)}
+                                            onPaste={(e) => handlePasteImageOrUrl(e, 'products', `prod_sec_${Date.now()}`, setNewSecondaryImage, 'newSecondaryImage')}
                                             placeholder="https://example.com/secondary-image.jpg"
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
@@ -1081,6 +1112,7 @@ export function AdminDashboard() {
                                             type="text"
                                             value={catImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setCatImage(e.target.value)}
+                                            onPaste={(e) => handlePasteImageOrUrl(e, 'categories', `cat_${Date.now()}`, setCatImage, 'catImage')}
                                             placeholder="https://example.com/cat.jpg"
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
@@ -1197,6 +1229,7 @@ export function AdminDashboard() {
                                             type="text"
                                             value={editCatImage}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setEditCatImage(e.target.value)}
+                                            onPaste={(e) => editingCategory && handlePasteImageOrUrl(e, 'categories', editingCategory.id, setEditCatImage, 'editCatImage')}
                                             className="w-full mt-1 px-3 py-2 text-sm rounded-md border border-gray-200"
                                         />
                                     </div>

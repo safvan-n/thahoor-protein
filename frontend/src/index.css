@@ -145,7 +145,13 @@
   }
 }
 
-/* Better mobile tap experience */
+/* Better mobile tap experience and native clipboard support */
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+input, textarea, select, [contenteditable="true"] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
