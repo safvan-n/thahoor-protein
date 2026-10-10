@@ -6,7 +6,16 @@ import { useDeliveryZoneStore } from '../../store/deliveryZoneStore';
 interface CheckoutModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (details: { name: string; phone: string; address: any; location: any; paymentMethod: 'COD'; paymentProof?: string }) => void;
+    onSubmit: (details: { 
+        name: string; 
+        phone: string; 
+        address: any; 
+        location: any; 
+        paymentMethod: 'COD'; 
+        paymentProof?: string;
+        deliveryFee: number;
+        finalTotal: number;
+    }) => void;
     totalAmount: number;
 }
 
@@ -34,11 +43,29 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
     const [paymentMethod] = useState<'COD'>('COD');
     const [paymentProof] = useState<string>('');
 
+    const activeZones = zones.filter((z) => z.isActive);
+    const deliveryCheck = checkDeliveryAvailability(address.pincode);
+    const isPincodeEntered = address.pincode.replace(/\D/g, '').length === 6;
+
+    const deliveryFee = (isPincodeEntered && deliveryCheck.isAvailable && deliveryCheck.matchedZone) 
+        ? (deliveryCheck.matchedZone.deliveryFee || 0) 
+        : 0;
+    const finalTotal = totalAmount + deliveryFee;
+
     const handleNext = () => setStep(step < 3 ? (step + 1) as 1 | 2 | 3 : 3);
     const handleBack = () => setStep(step > 1 ? (step - 1) as 1 | 2 | 3 : 1);
 
     const handleSubmit = () => {
-        onSubmit({ name, phone, address, location, paymentMethod, paymentProof });
+        onSubmit({ 
+            name, 
+            phone, 
+            address, 
+            location, 
+            paymentMethod, 
+            paymentProof,
+            deliveryFee,
+            finalTotal 
+        });
     };
 
     const getCurrentLocation = () => {
@@ -82,10 +109,6 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
     };
 
     if (!isOpen) return null;
-
-    const activeZones = zones.filter((z) => z.isActive);
-    const deliveryCheck = checkDeliveryAvailability(address.pincode);
-    const isPincodeEntered = address.pincode.replace(/\D/g, '').length === 6;
 
     const isStep1Valid = name.trim() !== '' && phone.length >= 10;
     const isStep2Valid = 
@@ -302,13 +325,19 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                             {isPincodeEntered && (
                                                 <div>
                                                     {deliveryCheck.isAvailable ? (
-                                                        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center gap-2.5 text-emerald-800 text-xs font-semibold">
-                                                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                                                            <span>
-                                                                ✅ Serviceable! Delivery is available in {deliveryCheck.matchedZone?.name || address.city} 
-                                                                {deliveryCheck.matchedZone?.deliveryFee && deliveryCheck.matchedZone.deliveryFee > 0 
-                                                                    ? ` (Delivery: ₹${deliveryCheck.matchedZone.deliveryFee})` 
-                                                                    : ' (Free Delivery)'}
+                                                        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between gap-2.5 text-emerald-800 text-xs">
+                                                            <div className="flex items-center gap-2">
+                                                                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                                                <span className="font-semibold">
+                                                                    Serviceable! {deliveryCheck.matchedZone?.name || address.city}
+                                                                </span>
+                                                            </div>
+                                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${
+                                                                deliveryFee > 0 
+                                                                    ? 'bg-primary/10 text-primary border border-primary/20' 
+                                                                    : 'bg-emerald-100 text-emerald-800'
+                                                            }`}>
+                                                                {deliveryFee > 0 ? `+ ₹${deliveryFee} Delivery` : 'FREE Delivery'}
                                                             </span>
                                                         </div>
                                                     ) : (
@@ -342,11 +371,33 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
 
                                 {/* STEP 3: Payment */}
                                 {step === 3 && (
-                                    <div className="space-y-6">
-                                         <div>
-                                            <h3 className="text-lg font-bold text-gray-900 mb-1">Payment Method</h3>
-                                            <p className="text-sm text-gray-500">Choose how you want to pay</p>
+                                    <div className="space-y-5">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1">Order Summary & Payment</h3>
+                                            <p className="text-sm text-gray-500">Review your final payable bill</p>
                                         </div>
+
+                                        {/* Bill Breakdown Card */}
+                                        <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-2.5">
+                                            <div className="flex justify-between items-center text-xs text-gray-600">
+                                                <span>Products Subtotal</span>
+                                                <span className="font-bold text-gray-900">₹{totalAmount.toFixed(0)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-gray-600">
+                                                    Delivery Charge ({deliveryCheck.matchedZone?.name || address.city || 'Standard'})
+                                                </span>
+                                                <span className={`font-bold ${deliveryFee > 0 ? 'text-primary' : 'text-emerald-600'}`}>
+                                                    {deliveryFee > 0 ? `+ ₹${deliveryFee}` : 'FREE Delivery'}
+                                                </span>
+                                            </div>
+                                            <div className="h-[1px] bg-gray-200 my-1"></div>
+                                            <div className="flex justify-between items-center pt-0.5 text-sm font-bold text-gray-900">
+                                                <span>Total to Pay</span>
+                                                <span className="text-xl font-bold text-primary">₹{finalTotal.toFixed(0)}</span>
+                                            </div>
+                                        </div>
+
                                         <div className="grid grid-cols-1 gap-3">
                                             <div 
                                                 className="relative flex flex-col p-4 border-2 border-primary bg-primary/5 rounded-2xl shadow-sm shadow-primary/10"
@@ -357,7 +408,9 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                                                     </div>
                                                     <span className="font-bold text-gray-900">Cash on Delivery</span>
                                                 </div>
-                                                <span className="text-xs text-gray-500 ml-11">Pay via cash or UPI at your doorstep</span>
+                                                <span className="text-xs text-gray-500 ml-11">
+                                                    Pay ₹{finalTotal.toFixed(0)} via cash or UPI at your doorstep
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -369,8 +422,19 @@ export function CheckoutModal({ isOpen, onClose, onSubmit, totalAmount }: Checko
                     {/* Footer Container */}
                     <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex flex-col gap-4">
                         <div className="flex justify-between items-center px-1">
-                            <span className="text-sm font-semibold text-gray-500">Total Estimate</span>
-                            <span className="text-2xl font-bold text-primary">₹{totalAmount.toFixed(0)}</span>
+                            <div>
+                                <span className="text-xs font-semibold text-gray-500 block">Total Payable</span>
+                                {deliveryFee > 0 ? (
+                                    <span className="text-[11px] text-gray-400">
+                                        (₹{totalAmount.toFixed(0)} products + ₹{deliveryFee} delivery)
+                                    </span>
+                                ) : (
+                                    <span className="text-[11px] text-emerald-600 font-semibold">
+                                        (Free Delivery Included)
+                                    </span>
+                                )}
+                            </div>
+                            <span className="text-2xl font-bold text-primary">₹{finalTotal.toFixed(0)}</span>
                         </div>
                         
                         <div className="flex gap-3">
